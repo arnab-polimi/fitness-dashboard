@@ -55,8 +55,7 @@ def calculate_vdot_from_race(distance_meters: float, duration_seconds: float) ->
         return None
 
     vdot = vo2 / pct_vo2max
-    # Bound between realistic human values (20 to 85)
-    return round(min(85.0, max(20.0, vdot)), 1)
+    return round(min(85.0, max(15.0, vdot)), 1)
 
 
 def velocity_for_pct_vo2max(vdot: float, pct: float) -> float:
@@ -82,9 +81,9 @@ def get_training_paces_from_vdot(vdot: float) -> Dict[str, Dict[str, Any]]:
     Calculates Jack Daniels training pace zones for a given VDOT:
     - Easy (E): 59 - 74% VO2max
     - Marathon (M): 75 - 84% VO2max
-    - Threshold (T): 83 - 88% VO2max (lactate threshold ~1hr pace)
-    - Interval (I): 95 - 100% VO2max (3-5 min repeats)
-    - Repetition (R): 105 - 115% VO2max (200-400m speed)
+    - Threshold (T): 83 - 88% VO2max
+    - Interval (I): 95 - 100% VO2max
+    - Repetition (R): 105 - 115% VO2max
     """
     zones = {
         "Easy (E-Pace)": {"pct_range": (0.62, 0.72), "purpose": "Aerobic base building, recovery, capillary growth"},
@@ -100,7 +99,6 @@ def get_training_paces_from_vdot(vdot: float) -> Dict[str, Dict[str, Any]]:
         v_low = velocity_for_pct_vo2max(vdot, p_low)
         v_high = velocity_for_pct_vo2max(vdot, p_high)
 
-        # Pace in sec/km = 1000 / (v / 60) = 60000 / v
         pace_high_sec = (60000.0 / v_low) if v_low > 0 else 0.0
         pace_low_sec = (60000.0 / v_high) if v_high > 0 else 0.0
 
@@ -116,38 +114,36 @@ def get_training_paces_from_vdot(vdot: float) -> Dict[str, Dict[str, Any]]:
 def estimate_activity_aerobic_decoupling(activity: Activity) -> Optional[float]:
     """
     Estimates Aerobic Decoupling (% drift in Pace:HR ratio).
-    If full lap/stream data exists, computes exact split drift.
-    Otherwise, models drift based on duration, heart rate elevation, and training effect.
+    If full lap/split data exists, computes exact split drift.
+    Otherwise, models drift based on duration and heart rate spread.
     """
-    if not activity.avg_hr or activity.duration_seconds < 1800:  # Runs > 30 min
+    if not activity.avg_hr or activity.duration_seconds < 1200:
         return None
 
-    # Check if raw data has lap/split info
-    raw = activity.raw_data
+    raw = activity.raw_data or {}
     if "laps" in raw and len(raw["laps"]) >= 2:
-        laps = raw["laps"]
-        half = len(laps) // 2
-        first_half = laps[:half]
-        second_half = laps[half:]
+        laps = [l for l in raw["laps"] if (l.get("distance_meters", 0) > 200 or l.get("elapsed_seconds", 0) > 60)]
+        if len(laps) >= 2:
+            half = len(laps) // 2
+            first_half = laps[:half]
+            second_half = laps[half:]
 
-        def get_lap_ef(lap_list):
-            speeds = [l.get("speed_m_s", 0) for l in lap_list if l.get("speed_m_s", 0) > 0]
-            hrs = [l.get("avg_hr", 0) for l in lap_list if l.get("avg_hr", 0) > 0]
-            if speeds and hrs:
-                return (np.mean(speeds) * 60.0) / np.mean(hrs)
-            return None
+            def get_lap_ef(lap_list):
+                speeds = [l.get("speed_m_s", 0) for l in lap_list if l.get("speed_m_s", 0) > 0]
+                hrs = [l.get("avg_hr", 0) for l in lap_list if l.get("avg_hr", 0) > 0]
+                if speeds and hrs:
+                    return (np.mean(speeds) * 60.0) / np.mean(hrs)
+                return None
 
-        ef1 = get_lap_ef(first_half)
-        ef2 = get_lap_ef(second_half)
-        if ef1 and ef2 and ef1 > 0:
-            drift = ((ef1 - ef2) / ef1) * 100.0
-            return round(drift, 1)
+            ef1 = get_lap_ef(first_half)
+            ef2 = get_lap_ef(second_half)
+            if ef1 and ef2 and ef1 > 0:
+                drift = ((ef1 - ef2) / ef1) * 100.0
+                return round(drift, 1)
 
-    # Heuristic estimation for steady runs based on max vs avg HR & duration
     if activity.max_hr and activity.avg_hr:
         hr_spread = (activity.max_hr - activity.avg_hr) / activity.avg_hr
         duration_factor = min(2.5, activity.duration_seconds / 3600.0)
-        # Moderate steady drift baseline
         estimated_drift = max(0.5, hr_spread * 22.0 * (duration_factor ** 0.5))
         return round(min(25.0, estimated_drift), 1)
 
@@ -168,17 +164,18 @@ class RunningMetricsCalculator:
             # 2. Aerobic Decoupling
             act.aerobic_decoupling = estimate_activity_aerobic_decoupling(act)
 
-            # 3. VDOT / VO2max estimate
+            # 3. VDOT / VO2max estimate from moving time (more accurate than total elapsed time)
             if act.sport_type in ["run", "trail_run", "treadmill_run"] and act.distance_meters >= 3000:
-                act.vdot = calculate_vdot_from_race(act.distance_meters, act.duration_seconds)
+                effective_time = act.moving_time_seconds if (act.moving_time_seconds and act.moving_time_seconds > 0) else act.duration_seconds
+                act.vdot = calculate_vdot_from_race(act.distance_meters, effective_time)
 
         return activities
 
     @staticmethod
-    def get_peak_vdot(activities: List[Activity], recent_days: int = 90) -> float:
-        """Finds highest reliable VDOT score in the last N days."""
+    def get_peak_vdot(activities: List[Activity], recent_days: int = 120) -> float:
+        """Finds highest peak VDOT score from verified running performances."""
         if not activities:
-            return 45.0  # standard default
+            return 30.0
 
         cutoff = None
         sorted_acts = sorted(activities, key=lambda a: a.start_time, reverse=True)
@@ -187,11 +184,12 @@ class RunningMetricsCalculator:
 
         valid_vdots = []
         for a in activities:
-            if a.vdot and a.vdot > 25:
-                if cutoff is None or a.start_time.date() >= cutoff:
-                    valid_vdots.append(a.vdot)
+            if a.sport_type in ["run", "trail_run", "treadmill_run"] and "cycling" not in a.title.lower():
+                if a.vdot and a.vdot > 15:
+                    if cutoff is None or a.start_time.date() >= cutoff:
+                        valid_vdots.append(a.vdot)
 
         if valid_vdots:
-            # Return 90th percentile to ignore anomalous GPS glitches
-            return round(float(np.percentile(valid_vdots, 90)), 1)
-        return 45.0
+            # Use maximum peak verified VDOT
+            return round(float(max(valid_vdots)), 1)
+        return 30.0

@@ -40,7 +40,7 @@ apply_dark_theme()
 
 def init_state():
     """Initializes session state, database manager, and optional GarminDb auto-sync."""
-    if "db_manager" not in st.session_state:
+    if "db_manager" not in st.session_state or not hasattr(st.session_state.db_manager, "get_daily_health_df"):
         st.session_state.db_manager = DatabaseManager()
     if "user_profile" not in st.session_state:
         st.session_state.user_profile = st.session_state.db_manager.get_user_profile()
