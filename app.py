@@ -1,11 +1,11 @@
 """
 ApexFitness - Professional Personal Fitness Intelligence Dashboard.
-Main Streamlit Application Entrypoint.
+Main Streamlit Application Entrypoint with GarminDb Pipeline Support.
 """
 import streamlit as st
 import pandas as pd
 
-# 1. Page Configuration (Must be first Streamlit call)
+# 1. Page Configuration
 st.set_page_config(
     page_title="ApexFitness | Personal Fitness Intelligence",
     page_icon="⚡",
@@ -20,6 +20,7 @@ from src.analytics.running_metrics import RunningMetricsCalculator
 from src.analytics.race_predictor import RacePredictor
 from src.analytics.injury_risk import InjuryRiskEngine
 from src.insights.engine import FitnessInsightsEngine
+from src.ingestion.garmindb_pipeline import GarminDbPipeline
 from src.ui.theme import apply_dark_theme
 from src.ui.views import (
     render_overview_view,
@@ -38,11 +39,20 @@ apply_dark_theme()
 
 
 def init_state():
-    """Initializes session state and database manager."""
+    """Initializes session state, database manager, and optional GarminDb auto-sync."""
     if "db_manager" not in st.session_state:
         st.session_state.db_manager = DatabaseManager()
     if "user_profile" not in st.session_state:
         st.session_state.user_profile = st.session_state.db_manager.get_user_profile()
+    if "initial_garmindb_checked" not in st.session_state:
+        # Check if database is empty and GarminDb is available
+        if st.session_state.db_manager.count_activities() == 0 and GarminDbPipeline.is_garmindb_available():
+            try:
+                GarminDbPipeline.sync_all(st.session_state.db_manager, st.session_state.user_profile)
+                st.session_state.user_profile = st.session_state.db_manager.get_user_profile()
+            except Exception:
+                pass
+        st.session_state.initial_garmindb_checked = True
 
 
 init_state()
@@ -51,6 +61,8 @@ user_profile: UserProfile = st.session_state.user_profile
 
 # 2. Fetch and Process Data
 activities = db.get_all_activities()
+health_df = db.get_daily_health_df()
+
 if activities:
     activities = RunningMetricsCalculator.enrich_activities(activities, user_profile)
     daily_loads = TrainingLoadEngine.calculate_daily_metrics(activities, user_profile)
@@ -164,7 +176,7 @@ with st.sidebar:
     st.markdown(
         """
         <div style="font-size: 0.7rem; color: #64748b; text-align: center;">
-            ApexFitness v2.0 • Running Intelligence<br>
+            ApexFitness v2.0 • GarminDb Direct<br>
             Multi-Signal Load & Biomechanics
         </div>
         """,
@@ -180,7 +192,7 @@ if nav_selection == "⚡ Executive Overview":
 elif nav_selection == "📈 Training Load & PMC":
     render_training_load_view(activities, daily_loads, user_profile, daily_df)
 elif nav_selection == "🫀 Cardiovascular & Efficiency":
-    render_cardiovascular_view(activities, daily_loads, user_profile, daily_df, activities_df)
+    render_cardiovascular_view(activities, daily_loads, user_profile, daily_df, activities_df, health_df)
 elif nav_selection == "🛡️ Training Stress & Risk":
     render_injury_risk_view(activities, daily_loads, risk_report)
 elif nav_selection == "🧠 What is Happening to My Fitness?":

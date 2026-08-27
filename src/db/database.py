@@ -16,13 +16,14 @@ from src.db.schema import (
     ACTIVITIES_INDEXES,
     USER_PROFILE_TABLE_SCHEMA,
     DAILY_METRICS_TABLE_SCHEMA,
+    DAILY_HEALTH_TABLE_SCHEMA,
 )
 
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "fitness_data.db")
 
 
 class DatabaseManager:
-    """Manages SQLite storage for activities, user settings, and calculated metrics."""
+    """Manages SQLite storage for activities, user settings, daily metrics, and GarminDb health telemetry."""
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or DEFAULT_DB_PATH
@@ -44,6 +45,7 @@ class DatabaseManager:
                 cursor.execute(idx_sql)
             cursor.execute(USER_PROFILE_TABLE_SCHEMA)
             cursor.execute(DAILY_METRICS_TABLE_SCHEMA)
+            cursor.execute(DAILY_HEALTH_TABLE_SCHEMA)
             conn.commit()
 
     def save_activity(self, activity: Activity) -> None:
@@ -280,6 +282,7 @@ class DatabaseManager:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM activities")
             cursor.execute("DELETE FROM daily_metrics")
+            cursor.execute("DELETE FROM daily_health")
             conn.commit()
 
     def save_user_profile(self, profile: UserProfile) -> None:
@@ -322,7 +325,6 @@ class DatabaseManager:
             row = cursor.fetchone()
             if row:
                 return UserProfile.from_dict(dict(row))
-        # Default profile
         default_prof = UserProfile(user_id=user_id)
         self.save_user_profile(default_prof)
         return default_prof
@@ -369,4 +371,63 @@ class DatabaseManager:
             if not df.empty:
                 df["date"] = pd.to_datetime(df["date"]).dt.date
                 df["distance_km"] = df["distance_meters"] / 1000.0
+            return df
+
+    def save_daily_health_records(self, records: List[Dict[str, Any]]) -> int:
+        """Saves daily health telemetry from GarminDb (RHR, Sleep, Stress, Steps, Weight)."""
+        if not records:
+            return 0
+        sql = """
+        INSERT OR REPLACE INTO daily_health (
+            date, resting_hr, hr_min, hr_max, stress_avg,
+            steps, sleep_duration_seconds, deep_sleep_seconds,
+            light_sleep_seconds, rem_sleep_seconds, sleep_score,
+            weight_kg, calories_total
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        rows = []
+        for r in records:
+            d_str = r["date"].isoformat() if isinstance(r["date"], (date, datetime)) else str(r["date"])
+            rows.append((
+                d_str,
+                r.get("resting_hr"),
+                r.get("hr_min"),
+                r.get("hr_max"),
+                r.get("stress_avg"),
+                r.get("steps"),
+                r.get("sleep_duration_seconds"),
+                r.get("deep_sleep_seconds"),
+                r.get("light_sleep_seconds"),
+                r.get("rem_sleep_seconds"),
+                r.get("sleep_score"),
+                r.get("weight_kg"),
+                r.get("calories_total"),
+            ))
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany(sql, rows)
+            conn.commit()
+            return len(rows)
+
+    def get_daily_health_df(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+    ) -> pd.DataFrame:
+        """Returns daily health telemetry as DataFrame."""
+        query = "SELECT * FROM daily_health WHERE 1=1"
+        params: List[Any] = []
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date.isoformat())
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date.isoformat())
+        query += " ORDER BY date ASC"
+
+        with self.get_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
+            if not df.empty:
+                df["date"] = pd.to_datetime(df["date"]).dt.date
             return df

@@ -218,7 +218,6 @@ def plot_hr_vs_pace_scatter(activities_df: pd.DataFrame) -> go.Figure:
     if df.empty:
         return go.Figure()
 
-    # Convert pace to min/km float for plotting
     df["pace_min_km"] = df["avg_pace_sec_km"] / 60.0
     df["date_str"] = pd.to_datetime(df["start_time"]).dt.strftime("%Y-%m-%d")
 
@@ -243,7 +242,6 @@ def plot_hr_vs_pace_scatter(activities_df: pd.DataFrame) -> go.Figure:
         )
     )
 
-    # Linear trendline
     if len(df) >= 3:
         z = np.polyfit(df["pace_min_km"], df["avg_hr"], 1)
         p = np.poly1d(z)
@@ -263,7 +261,7 @@ def plot_hr_vs_pace_scatter(activities_df: pd.DataFrame) -> go.Figure:
         title="Heart Rate vs. Pace (Cardiovascular Efficiency Profile)",
         xaxis_title="Pace (min/km) [Faster ➔]",
         yaxis_title="Average Heart Rate (bpm)",
-        xaxis=dict(autorange="reversed"),  # Faster pace on right
+        xaxis=dict(autorange="reversed"),
         height=400,
     )
     fig.update_layout(layout)
@@ -313,6 +311,71 @@ def plot_efficiency_factor_trend(daily_df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def plot_recovery_telemetry_chart(health_df: pd.DataFrame) -> go.Figure:
+    """
+    Plots daily Resting Heart Rate and Sleep Duration trends from GarminDb.
+    """
+    if health_df.empty or "resting_hr" not in health_df.columns:
+        return go.Figure()
+
+    df = health_df[health_df["resting_hr"].notna()].copy()
+    if df.empty:
+        return go.Figure()
+
+    df["rhr_7d"] = df["resting_hr"].rolling(window=7, min_periods=2).mean()
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Sleep hours bar if available
+    if "sleep_duration_seconds" in df.columns:
+        df["sleep_hours"] = df["sleep_duration_seconds"] / 3600.0
+        fig.add_trace(
+            go.Bar(
+                x=df["date"],
+                y=df["sleep_hours"],
+                name="Sleep Duration (Hours)",
+                marker=dict(color="rgba(168, 85, 247, 0.4)", line=dict(color="#c084fc", width=1)),
+            ),
+            secondary_y=True,
+        )
+
+    # Resting HR daily dots
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["resting_hr"],
+            mode="markers",
+            name="Daily Resting HR",
+            marker=dict(color="#38bdf8", size=6, opacity=0.8),
+        ),
+        secondary_y=False,
+    )
+
+    # 7-day RHR trendline
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["rhr_7d"],
+            mode="lines",
+            name="7-Day RHR Baseline",
+            line=dict(color="#00ffa3", width=2.5),
+        ),
+        secondary_y=False,
+    )
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        title="Garmin Recovery Telemetry: Resting Heart Rate & Sleep Dynamics",
+        height=360,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    fig.update_layout(layout)
+    fig.update_yaxes(title_text="Resting Heart Rate (bpm)", secondary_y=False)
+    if "sleep_duration_seconds" in df.columns:
+        fig.update_yaxes(title_text="Sleep (Hours)", secondary_y=True)
+    return fig
+
+
 def plot_acwr_gauge(acwr_val: float) -> go.Figure:
     """Speedometer-style gauge for Acute:Chronic Workload Ratio."""
     fig = go.Figure(
@@ -356,7 +419,6 @@ def plot_risk_radar(risk_report: RiskReport) -> go.Figure:
     categories = [s.name.split("(")[0].strip() for s in risk_report.signals]
     scores = [s.score for s in risk_report.signals]
 
-    # Close the radar loop
     categories.append(categories[0])
     scores.append(scores[0])
 

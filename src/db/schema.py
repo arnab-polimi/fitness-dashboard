@@ -85,3 +85,21 @@ CREATE TABLE IF NOT EXISTS daily_metrics (
     efficiency_factor REAL
 );
 """
+
+DAILY_HEALTH_TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS daily_health (
+    date DATE PRIMARY KEY,
+    resting_hr REAL,
+    hr_min REAL,
+    hr_max REAL,
+    stress_avg REAL,
+    steps INTEGER,
+    sleep_duration_seconds REAL,
+    deep_sleep_seconds REAL,
+    light_sleep_seconds REAL,
+    rem_sleep_seconds REAL,
+    sleep_score REAL,
+    weight_kg REAL,
+    calories_total REAL
+);
+"""
