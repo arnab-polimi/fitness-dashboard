@@ -10,9 +10,10 @@ ENV/
 .venv
 
 # Database & Local Data
-*.db
 *.sqlite3
 *.duckdb
+*.db
+!fitness_data.db
 
 
 # Testing & Coverage
