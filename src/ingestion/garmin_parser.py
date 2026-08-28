@@ -4,7 +4,7 @@ Parser for Garmin Connect Activity CSV exports.
 import io
 import re
 from datetime import datetime
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Any
 import pandas as pd
 
 from src.models.activity import Activity
