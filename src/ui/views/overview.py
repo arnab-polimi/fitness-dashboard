@@ -14,10 +14,12 @@ from src.analytics.running_metrics import (
     format_pace_sec_km,
     RunningMetricsCalculator,
 )
+from src.analytics.fitness_age import FitnessAgeEngine
 from src.ui.components import (
     render_metric_card,
     render_disclaimer_banner,
     render_race_prediction_cards,
+    render_fitness_age_card,
 )
 from src.ui.charts import plot_pmc_chart, plot_weekly_mileage_and_load
 from src.ui.icons import render_view_header, render_section_header
@@ -31,7 +33,9 @@ def render_overview_view(
     risk_report: RiskReport,
     daily_df: pd.DataFrame,
     activities_df: pd.DataFrame,
+    health_df: Optional[pd.DataFrame] = None,
 ) -> None:
+
     """Renders the executive summary overview."""
     render_view_header(
         title="Executive Fitness & Performance Overview",
@@ -190,16 +194,28 @@ def render_overview_view(
             delta_type="pos" if risk_report.composite_score < 50 else "neg",
         )
 
-    # 4. Projected Race Performance Cards
+    # 4. Fitness Age & Physiological Pattern Recognizer
+    fa_report = FitnessAgeEngine.calculate_fitness_age(
+        user_profile=user_profile,
+        daily_df=daily_df,
+        health_df=health_df,
+        recent_vdot=peak_vdot
+    )
+    render_fitness_age_card(fa_report)
+
+    # 5. Projected Race Performance Cards
     render_section_header("Estimated Race Performance (5K, 10K, Half & Full Marathon)", icon_name="running")
     render_race_prediction_cards(race_predictions)
 
-    # 5. Interactive PMC Chart
-    render_section_header("Fitness, Fatigue & Form Dynamics (Performance Management Chart)", icon_name="overview")
-    st.plotly_chart(plot_pmc_chart(daily_df), use_container_width=True)
+    # 6. Performance Management Chart (PMC)
+    render_section_header("Performance Management Dynamics (PMC)", icon_name="overview")
+    pmc_fig = plot_pmc_chart(daily_df)
+    st.plotly_chart(pmc_fig, use_container_width=True)
 
-    # 6. Weekly Mileage & Load
-    st.plotly_chart(plot_weekly_mileage_and_load(daily_df, user_profile.units), use_container_width=True)
+    # 7. Weekly Volume & Training Stress
+    render_section_header("Weekly Training Load & Distance Trends", icon_name="overview")
+    weekly_fig = plot_weekly_mileage_and_load(daily_df, user_profile.units)
+    st.plotly_chart(weekly_fig, use_container_width=True)
 
     # Disclaimer
     render_disclaimer_banner(risk_report.disclaimer)

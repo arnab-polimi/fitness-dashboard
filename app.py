@@ -437,8 +437,9 @@ with st.sidebar:
 # 4. View Router
 if nav_selection == "Executive Overview":
     render_overview_view(
-        activities, daily_loads, user_profile, race_predictions, risk_report, daily_df, activities_df
+        activities, daily_loads, user_profile, race_predictions, risk_report, daily_df, activities_df, health_df
     )
+
 elif nav_selection == "Training Plan":
     render_training_plan_view(db)
 
