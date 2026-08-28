@@ -162,6 +162,7 @@ def on_profile_change(new_prof: UserProfile):
 
 # 3. Sidebar Navigation & Activity Focus Selector
 with st.sidebar:
+    run_brand_icon = get_icon_html("running", size=24, margin_right=8)
     sidebar_brand_html = f"""<div style="padding: 6px 0 14px 0; display: flex; align-items: center;">
 {run_brand_icon}
 <div>
@@ -170,6 +171,7 @@ with st.sidebar:
 </div>
 </div>"""
     st.markdown(sidebar_brand_html, unsafe_allow_html=True)
+
 
 
     auto_sync_status = st.session_state.get("garmin_auto_sync_status")
