@@ -6,7 +6,10 @@ import os
 import re
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
-from pypdf import PdfReader
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 
 class PDFPlanParser:
@@ -42,11 +45,15 @@ class PDFPlanParser:
         """
         Parses a PDF training plan file or file-like object and returns a list of workout dicts.
         """
+        if PdfReader is None:
+            raise ImportError("The 'pypdf' package is not installed. Please install pypdf to parse PDF files.")
+
         reader = PdfReader(file_source)
         full_text = "\n".join([page.extract_text() or "" for page in reader.pages])
 
         workouts = cls.parse_text(full_text, year=year)
         return workouts
+
 
     @classmethod
     def parse_text(cls, text: str, year: int = 2026) -> List[Dict[str, Any]]:
