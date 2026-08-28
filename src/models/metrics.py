@@ -49,7 +49,7 @@ class DailyLoad:
         elif 10 <= self.tsb <= 25:
             return "#10B981"  # Emerald Green
         elif -10 <= self.tsb < 10:
-            return "#06B6D4"  # Cyan
+            return "#4D71B2"  # Blue-slate
         elif -30 <= self.tsb < -10:
             return "#F59E0B"  # Amber
         else:
@@ -85,7 +85,7 @@ class RiskReport:
     key_takeaways: List[str] = field(default_factory=list)
     actionable_guidance: List[str] = field(default_factory=list)
     disclaimer: str = (
-        "⚠️ DISCLAIMER: This Training Stress & Injury-Risk Indicator is an algorithmic analysis "
+        " DISCLAIMER: This Training Stress & Injury-Risk Indicator is an algorithmic analysis "
         "of physiological training load, biomechanical variance, and fatigue patterns. It is NOT "
         "a medical diagnostic tool or clinical prediction. Always listen to your body and consult "
         "a sports medicine professional or coach for pain or medical advice."
@@ -128,4 +128,4 @@ class FitnessInsight:
     metric_evidence: str
     action_item: str
     impact: str  # 'positive', 'neutral', 'warning', 'critical'
-    icon: str = "📈"
+    icon: str = ""

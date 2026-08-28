@@ -108,23 +108,29 @@ def parse_clean_float(val: Any) -> Optional[float]:
     return None
 
 
-def normalize_sport_type(raw_type: str) -> str:
+def normalize_sport_type(raw_type: str, title: Optional[str] = None) -> str:
     """Normalizes sport string to standard category."""
-    if not raw_type:
+    if not raw_type and not title:
         return "run"
-    s = str(raw_type).strip().lower()
-    if "trail" in s:
+    s = f"{raw_type or ''} {title or ''}".strip().lower()
+    if "trail run" in s or "trail_run" in s:
         return "trail_run"
-    elif "treadmill" in s or "indoor" in s:
+    elif "treadmill" in s or "indoor run" in s:
         return "treadmill_run"
-    elif "run" in s or "track" in s:
-        return "run"
-    elif "cycl" in s or "bike" in s or "ride" in s:
-        return "cycling"
-    elif "walk" in s or "hike" in s:
+    elif "hike" in s or "hiking" in s:
+        return "hiking"
+    elif "walk" in s or "walking" in s:
         return "walking"
+    elif "cycl" in s or "bike" in s or "ride" in s or "biking" in s:
+        return "cycling"
+    elif "yoga" in s or "pilates" in s or "stretch" in s or "mobility" in s:
+        return "yoga"
     elif "swim" in s:
         return "swimming"
+    elif "strength" in s or "weight" in s or "gym" in s:
+        return "strength"
+    elif "run" in s or "track" in s or "jog" in s:
+        return "run"
     return "other"
 
 

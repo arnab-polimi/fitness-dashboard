@@ -20,12 +20,29 @@ from src.ingestion.garmin_parser import (
 from src.ingestion.deduplicator import ActivityDeduplicator
 from src.analytics.training_load import compute_activity_load
 from src.analytics.running_metrics import RunningMetricsCalculator
+from src.analytics.sleep_score import SleepScoreCalculator
 
 DEFAULT_GARMIDB_DIR = os.path.expanduser(r"~\HealthData\DBs")
 
 
 class GarminDbPipeline:
     """Ingests and synchronizes data directly from local GarminDb SQLite databases."""
+
+    @classmethod
+    def get_raw_running_activities(cls, db_dir: Optional[str] = None) -> List[Activity]:
+        """Return only raw Garmin running records for load-model parity.
+
+        This deliberately bypasses the dashboard's canonical/deduplicated
+        store. It is used for CTL, ATL, and TSB so those metrics are based on
+        the same GarminDB records as the standalone Garmin report.
+        """
+        target_dir = db_dir or DEFAULT_GARMIDB_DIR
+        act_db_path = os.path.join(target_dir, "garmin_activities.db")
+        if not os.path.exists(act_db_path):
+            return []
+
+        activities, _ = cls._extract_activities(act_db_path)
+        return [activity for activity in activities if activity.sport_type == "run"]
 
     @classmethod
     def is_garmindb_available(cls, db_dir: Optional[str] = None) -> bool:
@@ -218,8 +235,10 @@ class GarminDbPipeline:
             for r in rows:
                 act_id = str(r["activity_id"])
                 start_dt = parse_datetime(r["start_time"])
-                sport_type = normalize_sport_type(r["sport"] or "running")
-                title = r["name"] or f"Garmin {sport_type.capitalize()}"
+                title = r["name"] or ""
+                sport_type = normalize_sport_type(r["sport"] or "running", title)
+                if not title:
+                    title = f"Garmin {sport_type.capitalize()}"
 
                 # Distance in GarminDb is in km
                 dist_km = float(r["distance"] or 0.0)
@@ -339,4 +358,5 @@ class GarminDbPipeline:
                     records_by_date[d] = {"date": d}
                 records_by_date[d]["weight_kg"] = float(r["weight"]) if r["weight"] is not None else None
 
-        return list(records_by_date.values())
+        records = list(records_by_date.values())
+        return SleepScoreCalculator.calculate_records(records, overwrite_existing=False)

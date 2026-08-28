@@ -14,6 +14,7 @@ from src.ui.components import (
     render_metric_card,
 )
 from src.ui.charts import plot_acwr_gauge, plot_risk_radar
+from src.ui.icons import render_view_header, render_section_header
 
 
 def render_injury_risk_view(
@@ -21,8 +22,11 @@ def render_injury_risk_view(
     daily_loads: List[DailyLoad],
     risk_report: RiskReport,
 ) -> None:
-    st.markdown("## 🛡️ Transparent Training-Stress & Injury-Risk Indicator")
-    st.caption("A multi-signal algorithmic assessment of training load distribution, volume ramps, and biomechanical fatigue.")
+    render_view_header(
+        title="Transparent Training-Stress & Injury-Risk Indicator",
+        caption="A multi-signal algorithmic assessment of training load distribution, volume ramps, and biomechanical fatigue.",
+        icon_name="injury_risk",
+    )
 
     # Explicit Medical Disclaimer
     render_disclaimer_banner(risk_report.disclaimer)
@@ -74,20 +78,20 @@ def render_injury_risk_view(
         st.plotly_chart(plot_risk_radar(risk_report), use_container_width=True)
 
     # Detailed Multi-Signal Breakdown
-    st.markdown("### 📋 Transparent Multi-Signal Audit")
+    render_section_header("Transparent Multi-Signal Audit")
     st.caption("Every signal's mathematical weighting, current value, status, and underlying evidence:")
 
     for signal in risk_report.signals:
         render_risk_signal_row(signal)
 
     # Actionable Coaching Guidance
-    st.markdown("### 💡 Recommended Training Modifications")
+    render_section_header("Recommended Training Modifications")
     for rec in risk_report.actionable_guidance:
         st.markdown(f"- **{rec}**")
 
     # Methodological Transparency Expander
-    with st.expander("🔍 Scientific Methodology & Signal Weighting"):
-        st.markdown("""
+    with st.expander("Scientific Methodology & Signal Weighting"):
+        st.markdown(r"""
         ### Why a Multi-Signal Approach?
         Single metrics (like the 10% rule or ACWR in isolation) fail to account for how stress interacts across different physiological systems. 
         This engine models 5 distinct operational risk factors:
@@ -99,7 +103,7 @@ def render_injury_risk_view(
            - Tracks the weekly climb in Chronic Training Load (CTL).
            - Ramping $> 5-8$ TSS/week exposes connective tissues (Achilles tendon, plantar fascia, patellar tendon) faster than collagen synthesis can adapt.
         3. **Foster's Training Monotony & Strain (20% weight)**:
-           - Measures daily load dispersion $\\text{Mean} / \\text{SD}$.
+           - Measures daily load dispersion $\text{Mean} / \text{SD}$.
            - High monotony ($> 1.8$) indicates an absence of polarized recovery days, leading to chronic glycogen depletion and blunted supercompensation.
         4. **Consecutive High-Load Days (15% weight)**:
            - Consecutive days exceeding 60 TSS without an intervening easy or rest day.

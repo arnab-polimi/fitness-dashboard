@@ -55,12 +55,13 @@ class StravaCSVParser:
         for _, row in df_norm.iterrows():
             try:
                 sport_raw = StravaCSVParser._get_val(row, ["activity type", "type", "sport"])
-                sport_type = normalize_sport_type(sport_raw or "run")
+                title_val = StravaCSVParser._get_val(row, ["activity name", "name", "title"])
+                sport_type = normalize_sport_type(sport_raw or "run", title_val)
 
                 date_val = StravaCSVParser._get_val(row, ["activity date", "date", "start time", "start_date"])
                 start_time = parse_datetime(date_val)
 
-                title = StravaCSVParser._get_val(row, ["activity name", "name", "title"]) or f"Strava {sport_type.capitalize()}"
+                title = title_val or f"Strava {sport_type.capitalize()}"
 
                 # Strava distances are usually in meters (e.g. 10245.5) or km (e.g. 10.2)
                 dist_raw = parse_clean_float(StravaCSVParser._get_val(row, ["distance", "total distance", "dist"]))

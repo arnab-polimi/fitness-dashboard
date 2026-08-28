@@ -36,7 +36,7 @@ class FitnessInsightsEngine:
                     metric_evidence="Activity count: 0",
                     action_item="Go to the Data Import tab and upload your CSV or load sample synthetic data.",
                     impact="neutral",
-                    icon="ℹ️",
+                    icon="ℹ",
                 )
             )
             return insights
@@ -82,7 +82,7 @@ class FitnessInsightsEngine:
                     metric_evidence=f"ACWR: {risk_report.acwr_value:.2f} | 7d Ramp Rate: +{risk_report.ramp_rate_7d:.1f} TSS/wk",
                     action_item=risk_report.actionable_guidance[0] if risk_report.actionable_guidance else "Schedule an easy recovery run or full rest day.",
                     impact="warning" if risk_report.composite_score < 75 else "critical",
-                    icon="⚠️",
+                    icon="",
                 )
             )
 
@@ -120,10 +120,10 @@ class FitnessInsightsEngine:
                     f"You are traveling {recent_ef:.2f} meters per beat compared to {base_ef:.2f} previously, "
                     "signaling improved stroke volume, capillary density, and mitochondrial aerobic efficiency."
                 ),
-                metric_evidence=f"Efficiency Factor: {base_ef:.2f} ➔ {recent_ef:.2f} (+{delta_pct:.1f}%)",
+                metric_evidence=f"Efficiency Factor: {base_ef:.2f}  {recent_ef:.2f} (+{delta_pct:.1f}%)",
                 action_item="Your aerobic base is solidifying. You can safely add tempo or threshold intervals to build top-end speed.",
                 impact="positive",
-                icon="🫀",
+                icon="",
             )
         elif delta_pct <= -3.0:
             return FitnessInsight(
@@ -133,10 +133,10 @@ class FitnessInsightsEngine:
                     f"Your speed-to-heart-rate ratio decreased by {abs(delta_pct):.1f}% recently. "
                     "This is commonly caused by accumulated residual fatigue, warmer training temperatures, dehydration, or running on hilly terrain."
                 ),
-                metric_evidence=f"Efficiency Factor: {base_ef:.2f} ➔ {recent_ef:.2f} ({delta_pct:.1f}%)",
+                metric_evidence=f"Efficiency Factor: {base_ef:.2f}  {recent_ef:.2f} ({delta_pct:.1f}%)",
                 action_item="Ensure adequate sleep and nutrition. Keep easy runs at truly conversational effort (Zone 2) to facilitate recovery.",
                 impact="warning",
-                icon="📉",
+                icon="",
             )
         else:
             return FitnessInsight(
@@ -146,7 +146,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"Current EF: {recent_ef:.2f} (Baseline: {base_ef:.2f})",
                 action_item="Maintain consistent aerobic mileage to drive progressive cardiovascular adaptations.",
                 impact="neutral",
-                icon="📊",
+                icon="",
             )
 
     @classmethod
@@ -170,7 +170,7 @@ class FitnessInsightsEngine:
             )
             act = "Optimal window for high-intensity race execution or key milestone workout."
             impact = "positive"
-            icon = "⚡"
+            icon = ""
         elif -15 <= tsb <= 10:
             form_desc = f"Productive Training Zone (TSB {tsb:+.1f})"
             expl = (
@@ -179,7 +179,7 @@ class FitnessInsightsEngine:
             )
             act = "Continue current training progression; balance quality intervals with aerobic mileage."
             impact = "positive"
-            icon = "📈"
+            icon = ""
         elif -30 <= tsb < -15:
             form_desc = f"Accumulating Fatigue (TSB {tsb:.1f})"
             expl = (
@@ -188,7 +188,7 @@ class FitnessInsightsEngine:
             )
             act = "Plan 1-2 easy recovery days or an active mobility session to absorb the training block."
             impact = "neutral"
-            icon = "🔋"
+            icon = ""
         else:
             form_desc = f"Deep Fatigue / Overreaching (TSB {tsb:.1f})"
             expl = (
@@ -197,7 +197,7 @@ class FitnessInsightsEngine:
             )
             act = "Mandatory 2 to 3 days of active recovery or rest to prevent non-functional overreaching."
             impact = "warning"
-            icon = "🛑"
+            icon = ""
 
         return FitnessInsight(
             category="fatigue",
@@ -230,10 +230,10 @@ class FitnessInsightsEngine:
                     f"You logged {last_7_dist:.1f} km this week compared to {prev_7_dist:.1f} km last week (+{delta_pct:.0f}%). "
                     "The general sports science guideline recommends capping weekly mileage increments to 10-15% to safeguard bones and tendons."
                 ),
-                metric_evidence=f"Weekly Distance: {prev_7_dist:.1f} km ➔ {last_7_dist:.1f} km",
+                metric_evidence=f"Weekly Distance: {prev_7_dist:.1f} km  {last_7_dist:.1f} km",
                 action_item="Hold mileage steady or schedule a slight de-load next week before increasing volume further.",
                 impact="warning",
-                icon="🏃",
+                icon="",
             )
         elif -15.0 <= delta_pct <= 15.0:
             return FitnessInsight(
@@ -243,7 +243,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"7-Day Volume: {last_7_dist:.1f} km (Previous: {prev_7_dist:.1f} km)",
                 action_item="Excellent discipline. Consistency is the single strongest predictor of long-term endurance gains.",
                 impact="positive",
-                icon="🎯",
+                icon="",
             )
         else:
             return FitnessInsight(
@@ -253,7 +253,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"7-Day Volume: {last_7_dist:.1f} km (Previous: {prev_7_dist:.1f} km)",
                 action_item="Use this recovery valley to recharge before starting your next focused build block.",
                 impact="neutral",
-                icon="🛌",
+                icon="",
             )
 
     @classmethod
@@ -280,7 +280,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"Recent Long Run Drift: {avg_drift:.1f}%",
                 action_item="Your endurance engine is race-ready for long distance events.",
                 impact="positive",
-                icon="🛡️",
+                icon="",
             )
         elif avg_drift > 7.5:
             return FitnessInsight(
@@ -293,7 +293,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"Recent Long Run Drift: {avg_drift:.1f}% (Ideal: <5%)",
                 action_item="Slow down long run starting paces by 15-20 sec/km and review on-run hydration/electrolyte intake.",
                 impact="warning",
-                icon="💧",
+                icon="",
             )
         return None
 
@@ -318,7 +318,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"Recent 10-run Avg Cadence: {mean_cad:.0f} spm",
                 action_item="Maintain this smooth, rhythmic stride pattern across both easy and tempo paces.",
                 impact="positive",
-                icon="🦶",
+                icon="",
             )
         elif mean_cad < 162:
             return FitnessInsight(
@@ -331,7 +331,7 @@ class FitnessInsightsEngine:
                 metric_evidence=f"Current Cadence: {mean_cad:.0f} spm (Target: 170-180 spm)",
                 action_item="Try quickening foot turnover slightly (+5-7 spm) with short, light steps under your hips.",
                 impact="neutral",
-                icon="⏱️",
+                icon="",
             )
         return None
 
@@ -364,5 +364,5 @@ class FitnessInsightsEngine:
             metric_evidence=f"5K: {pred_5k.formatted_time} | 10K: {pred_10k.formatted_time}" + (f" | 21.1K: {pred_half.formatted_time}" if pred_half else ""),
             action_item="Use these projected paces to calibrate your Threshold (T) and Interval (I) workout targets.",
             impact="positive",
-            icon="🏆",
+            icon="",
         )

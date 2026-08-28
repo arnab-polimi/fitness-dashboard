@@ -20,6 +20,7 @@ from src.ui.components import (
     render_race_prediction_cards,
 )
 from src.ui.charts import plot_pmc_chart, plot_weekly_mileage_and_load
+from src.ui.icons import render_view_header, render_section_header
 
 
 def render_overview_view(
@@ -32,11 +33,14 @@ def render_overview_view(
     activities_df: pd.DataFrame,
 ) -> None:
     """Renders the executive summary overview."""
-    st.markdown("## ⚡ Executive Fitness & Performance Overview")
-    st.caption("Real-time telemetry, aerobic efficiency, chronic training load, and multi-signal training risk.")
+    render_view_header(
+        title="Executive Fitness & Performance Overview",
+        caption="Real-time telemetry, aerobic efficiency, chronic training load, and multi-signal training risk.",
+        icon_name="overview",
+    )
 
     if not activities or not daily_loads:
-        st.warning("👋 Welcome to Personal Fitness Intelligence! No activity data loaded yet.")
+        st.warning("Welcome to Personal Fitness Intelligence! No activity data loaded yet.")
         st.info("Head over to the **Data Import & Sync** tab to upload your Garmin/Strava CSVs or load sample development data in one click.")
         return
 
@@ -130,7 +134,7 @@ def render_overview_view(
         render_metric_card(
             label="Weekly Training Load",
             value=f"{last_7_tss:.0f} TSS",
-            subtext=f"7-Day Rolling Volume",
+            subtext="7-Day Rolling Volume",
             delta=f"Ramp: {latest_dl.ramp_rate_ctl:+.1f}/wk",
             delta_type="pos" if (latest_dl.ramp_rate_ctl or 0) <= 5 else "neg",
         )
@@ -187,11 +191,11 @@ def render_overview_view(
         )
 
     # 4. Projected Race Performance Cards
-    st.markdown("### 🏁 Estimated Race Performance (5K, 10K, Half & Full Marathon)")
+    render_section_header("Estimated Race Performance (5K, 10K, Half & Full Marathon)", icon_name="running")
     render_race_prediction_cards(race_predictions)
 
     # 5. Interactive PMC Chart
-    st.markdown("### 📈 Fitness, Fatigue & Form Dynamics (Performance Management Chart)")
+    render_section_header("Fitness, Fatigue & Form Dynamics (Performance Management Chart)", icon_name="overview")
     st.plotly_chart(plot_pmc_chart(daily_df), use_container_width=True)
 
     # 6. Weekly Mileage & Load

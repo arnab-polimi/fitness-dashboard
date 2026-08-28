@@ -145,6 +145,8 @@ class Activity:
             "efficiency_factor": self.efficiency_factor,
             "aerobic_decoupling": self.aerobic_decoupling,
             "vdot": self.vdot,
+            "distance_km": self.distance_km,
+            "speed_kmh": self.speed_kmh,
         }
 
     @classmethod

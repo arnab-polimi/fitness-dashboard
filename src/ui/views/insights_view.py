@@ -6,11 +6,15 @@ import streamlit as st
 
 from src.models.metrics import FitnessInsight
 from src.ui.components import render_insight_card
+from src.ui.icons import render_view_header
 
 
 def render_insights_view(insights: List[FitnessInsight]) -> None:
-    st.markdown("## 🧠 What is Happening to My Fitness?")
-    st.caption("Data-driven narrative intelligence that explains physiological adaptations, workload trajectories, and recovery needs.")
+    render_view_header(
+        title="What is Happening to My Fitness?",
+        caption="Data-driven narrative intelligence that explains physiological adaptations, workload trajectories, and recovery needs.",
+        icon_name="insights",
+    )
 
     if not insights:
         st.info("No training insights available. Import activity history to generate physiological narratives.")

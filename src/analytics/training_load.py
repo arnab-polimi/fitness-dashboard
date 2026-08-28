@@ -71,8 +71,9 @@ def calculate_hrtss(
     if not avg_hr or avg_hr <= 0 or duration_seconds <= 0 or lthr <= 0:
         return 0.0
 
-    hr_factor = avg_hr / float(lthr)
-    hr_factor = min(1.4, max(0.4, hr_factor))
+    # Matches the Garmin-study proxy: moving time × (HR / LTHR)^2.
+    # The study bounds the HR ratio only to protect against implausible values.
+    hr_factor = min(1.5, max(0.3, avg_hr / float(lthr)))
     hrtss = (duration_seconds * (hr_factor ** 2) / 3600.0) * 100.0
     return round(hrtss, 2)
 
@@ -116,7 +117,7 @@ def compute_activity_load(activity: Activity, user_profile: UserProfile) -> Acti
 
 
 class TrainingLoadEngine:
-    """Calculates continuous daily training load, CTL (Fitness), ATL (Fatigue), TSB (Form), and ACWR."""
+    """Calculates Garmin-study-aligned run load, CTL, ATL, TSB, and ACWR."""
 
     # Time constants (days)
     CTL_TAU = 42.0  # Fitness time constant
@@ -131,20 +132,41 @@ class TrainingLoadEngine:
         end_date: Optional[date] = None,
     ) -> List[DailyLoad]:
         """
-        Builds a continuous day-by-day sequence of training load and EWMA metrics.
+        Builds the Garmin-study-equivalent continuous daily load series.
+
+        The source Garmin report uses running activities only, moving-time
+        hrTSS, and the standard 1/tau discrete Banister update. This method
+        intentionally uses the athlete's editable LTHR instead of a hidden
+        hard-coded value; set it to 178 bpm in Athlete Settings to reproduce
+        the current Garmin study exactly.
         """
         if not activities:
             return []
 
-        # Ensure activities have calculated load
-        enriched_acts = [compute_activity_load(act, user_profile) for act in activities]
+        # Garmin study's load model only includes activities stored as
+        # `running`. GarminDb normalizes that source value to `run` here.
+        running_acts = [
+            compute_activity_load(act, user_profile)
+            for act in activities
+            if act.sport_type == "run"
+        ]
+        if not running_acts:
+            return []
+
+        # Override the display/load TSS with the Garmin-study hrTSS proxy.
+        # Using moving time is important; duration is only a fallback for
+        # imports that do not supply a moving-time field.
+        for act in running_acts:
+            moving_time = act.moving_time_seconds or act.duration_seconds
+            act.tss = calculate_hrtss(moving_time, act.avg_hr, user_profile.lthr)
+            act.intensity_factor = round((act.avg_hr or 0.0) / float(user_profile.lthr), 3)
 
         # Determine date span
-        sorted_acts = sorted(enriched_acts, key=lambda a: a.start_time)
+        sorted_acts = sorted(running_acts, key=lambda a: a.start_time)
         first_act_date = sorted_acts[0].start_time.date()
         last_act_date = sorted_acts[-1].start_time.date()
 
-        actual_start = start_date or (first_act_date - timedelta(days=1))
+        actual_start = start_date or first_act_date
         actual_end = end_date or max(last_act_date, date.today())
 
         # Map activities by date
@@ -155,9 +177,9 @@ class TrainingLoadEngine:
                 acts_by_date[d] = []
             acts_by_date[d].append(act)
 
-        # Decay constants
-        k_ctl = 1.0 - math.exp(-1.0 / cls.CTL_TAU)
-        k_atl = 1.0 - math.exp(-1.0 / cls.ATL_TAU)
+        # Discrete update rule used by garmin_run_correlation_v2.py.
+        k_ctl = 1.0 / cls.CTL_TAU
+        k_atl = 1.0 / cls.ATL_TAU
 
         ctl = 0.0
         atl = 0.0

@@ -1,31 +1,32 @@
-# ⚡ ApexFitness — Personal Fitness Intelligence Dashboard
+# ApexFitness — Personal Fitness Intelligence Dashboard
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B.svg)](https://streamlit.io/)
 [![Plotly](https://img.shields.io/badge/Plotly-5.18%2B-3F4F75.svg)](https://plotly.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> A modern, web-based running intelligence platform built with **Python**, **Streamlit**, and **Plotly**. Ingests and deduplicates Garmin Connect and Strava activity archives, computes cutting-edge physiological endurance telemetry (CTL/ATL/TSB, VDOT, Aerobic Decoupling, Efficiency Factor), and powers a transparent multi-signal injury-risk engine and natural language fitness insights.
+> A modern, web-based running and multi-sport intelligence platform built with **Python**, **Streamlit**, and **Plotly**. Ingests and deduplicates Garmin Connect and Strava activity archives, synchronizes directly with local GarminDb pipelines, computes cutting-edge physiological endurance telemetry (CTL/ATL/TSB, VDOT, Aerobic Decoupling, Efficiency Factor), and powers a transparent multi-signal injury-risk engine and natural language fitness insights.
 
 ---
 
-## 📸 Key Features
+## Key Features
 
-- 📥 **Universal Activity Ingestion**: Drag-and-drop support for Garmin Connect (`Activities.csv`) and Strava Archive (`activities.csv`) exports.
-- 🔄 **Intelligent Cross-Source Deduplication**: Identifies overlapping runs using fuzzy timestamp, distance, and duration matching, merging Garmin's granular telemetry (cadence, vertical oscillation, training effect) with Strava's social titles and perceived exertion.
-- 📈 **Performance Management Chart (PMC)**: Exponentially Weighted Moving Averages for **Chronic Training Load (CTL / Fitness)**, **Acute Training Load (ATL / Fatigue)**, and **Training Stress Balance (TSB / Form)**.
-- 🫀 **Cardiovascular & Aerobic Telemetry**:
+- **Universal Activity Ingestion**: Direct GarminDb SQLite integration and drag-and-drop support for Garmin Connect (`Activities.csv`) and Strava Archive (`activities.csv`) exports.
+- **Intelligent Cross-Source Deduplication**: Identifies overlapping runs using fuzzy timestamp, distance, and duration matching, merging Garmin's granular telemetry (cadence, vertical oscillation, training effect) with Strava's social titles and perceived exertion.
+- **Performance Management Chart (PMC)**: Exponentially Weighted Moving Averages for **Chronic Training Load (CTL / Fitness)**, **Acute Training Load (ATL / Fatigue)**, and **Training Stress Balance (TSB / Form)**.
+- **Cardiovascular & Aerobic Telemetry**:
   - **Efficiency Factor (EF)**: Tracks speed per heartbeat ($m/\text{min}$ per $\text{bpm}$) over time to measure mitochondrial adaptations.
   - **Aerobic Decoupling ($Pw:HR$)**: Quantifies cardiac drift on long runs to verify aerobic base depth.
   - **Polarized Zone Distribution**: Breakdown of training time across 5 Heart Rate Zones.
-- 🛡️ **Transparent Training-Stress & Injury-Risk Indicator**: Multi-signal model assessing **Acute:Chronic Workload Ratio (ACWR)**, **7-Day Ramp Rate**, **Foster's Monotony & Strain**, **Consecutive Hard Days**, and **Biomechanical Cadence Anomalies**. *Clearly labeled as a training-load risk indicator, not a medical prediction.*
-- 🧠 **"What is Happening to My Fitness?"**: Structured narrative engine explaining physiological adaptations, volume trends, and actionable coaching guidance.
-- 🏁 **Race Performance Predictor**: Predicts 5K, 10K, Half Marathon, and Marathon times using Jack Daniels VDOT formulas and Pete Riegel power laws calibrated with your Chronic Training Load.
-- 🌙 **Sleek Cyber-Dark UI**: Glassmorphism cards, glowing telemetry accents, and responsive Plotly visual analytics.
+- **Transparent Training-Stress & Injury-Risk Indicator**: Multi-signal model assessing **Acute:Chronic Workload Ratio (ACWR)**, **7-Day Ramp Rate**, **Foster's Monotony & Strain**, **Consecutive Hard Days**, and **Biomechanical Cadence Anomalies**. *Clearly labeled as a training-load risk indicator, not a medical prediction.*
+- **"What is Happening to My Fitness?"**: Structured narrative engine explaining physiological adaptations, volume trends, and actionable coaching guidance.
+- **Race Performance Predictor**: Predicts 5K, 10K, Half Marathon, and Marathon times using Jack Daniels VDOT formulas and Pete Riegel power laws calibrated with your Chronic Training Load.
+- **Multi-Sport Analytics**: Dedicated telemetry views for Running, Walking, Cycling, Hiking, Yoga & Mobility, and Unified Multi-Sport.
+- **Sleek Cyber-Dark UI**: Glassmorphism cards, local folder icon integration, and responsive Plotly visual analytics.
 
 ---
 
-## 🏗️ Architecture & Project Structure
+## Architecture & Project Structure
 
 ```
 fitness-dashboard/
@@ -34,6 +35,13 @@ fitness-dashboard/
 ├── README.md                   # Project documentation
 ├── requirements.txt            # Python dependencies
 ├── app.py                      # Main Streamlit application entrypoint
+├── icons/                      # High-resolution PNG folder icons
+│   ├── bike.png
+│   ├── heartbeat.png
+│   ├── running.png
+│   ├── swimming.png
+│   ├── walking.png
+│   └── yoga.png
 ├── sample_data/                # Sample CSV datasets for instant preview
 │   ├── sample_garmin_activities.csv
 │   └── sample_strava_activities.csv
@@ -47,6 +55,8 @@ fitness-dashboard/
 │   │   └── schema.py           # SQL DDL schemas and indexes
 │   ├── ingestion/              # Parsers and deduplication
 │   │   ├── garmin_parser.py    # Garmin Connect CSV parser
+│   │   ├── garmindb_pipeline.py# Direct GarminDb SQLite ingestion
+│   │   ├── garmin_sync_runner.py# Garmin refresh runner
 │   │   ├── strava_parser.py    # Strava archive CSV parser
 │   │   ├── file_detector.py    # Automatic CSV format detector
 │   │   └── deduplicator.py     # Cross-source deduplication engine
@@ -57,7 +67,8 @@ fitness-dashboard/
 │   │   └── injury_risk.py      # Multi-signal Training Stress Risk Engine
 │   ├── insights/               # Narrative intelligence
 │   │   └── engine.py           # "What is happening to my fitness?" generator
-│   ├── ui/                     # UI components and Plotly charts
+│   ├── ui/                     # UI components, icons, and Plotly charts
+│   │   ├── icons.py            # Centralized PNG icon loader & embedder
 │   │   ├── theme.py            # Dark professional CSS styling
 │   │   ├── components.py       # Reusable cards, banners, metric widgets
 │   │   ├── charts.py           # Plotly chart builders
@@ -70,7 +81,12 @@ fitness-dashboard/
 │   │       ├── race_predictor_view.py
 │   │       ├── activity_log_view.py
 │   │       ├── import_view.py
-│   │       └── settings_view.py
+│   │       ├── settings_view.py
+│   │       ├── walking_view.py
+│   │       ├── cycling_view.py
+│   │       ├── hiking_view.py
+│   │       ├── yoga_view.py
+│   │       └── multisport_view.py
 │   └── data/
 │       └── synthetic_generator.py # Realistic 6-month dev dataset generator
 └── tests/                      # Automated unit test suite
@@ -78,12 +94,14 @@ fitness-dashboard/
     ├── test_deduplicator.py
     ├── test_analytics.py
     ├── test_injury_risk.py
+    ├── test_garmindb_pipeline.py
+    ├── test_garmin_sync_runner.py
     └── test_db.py
 ```
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### 1. Prerequisites
 - Python 3.10+ installed.
@@ -107,7 +125,7 @@ The dashboard will open automatically at `http://localhost:8501`.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Run the full pytest suite:
 ```bash
@@ -116,7 +134,7 @@ python -m pytest -v
 
 ---
 
-## 📊 Scientific & Mathematical Formulations
+## Scientific & Mathematical Formulations
 
 ### 1. Banister TRIMP (Training Impulse)
 $$\text{TRIMP} = D \times \Delta\text{HR} \times y \times e^{b \cdot \Delta\text{HR}}$$
@@ -124,12 +142,12 @@ $$\text{TRIMP} = D \times \Delta\text{HR} \times y \times e^{b \cdot \Delta\text
 - $\Delta\text{HR} = \frac{\text{HR}_{\text{avg}} - \text{HR}_{\text{rest}}}{\text{HR}_{\text{max}} - \text{HR}_{\text{rest}}}$ (Heart Rate Reserve fraction).
 - $b = 1.92$ (males) or $1.86$ (females), $y = 0.64$ (males) or $0.86$ (females).
 
-### 2. Running Training Stress Score (rTSS)
-$$\text{rTSS} = \left( \frac{t \times \text{IF}^2}{3600} \right) \times 100 \quad \text{where} \quad \text{IF} = \frac{\text{vLT}}{\text{Pace}_{\text{avg}}}$$
+### 2. Heart-Rate Training Stress Score (hrTSS)
+$$\text{hrTSS} = \left( \frac{t \times (HR_{avg}/LTHR)^2}{3600} \right) \times 100$$
 
 ### 3. EWMA Fitness, Fatigue & Form
-- **Fitness (CTL)**: $CTL_t = CTL_{t-1} + (TSS_t - CTL_{t-1}) \cdot (1 - e^{-1/42})$
-- **Fatigue (ATL)**: $ATL_t = ATL_{t-1} + (TSS_t - ATL_{t-1}) \cdot (1 - e^{-1/7})$
+- **Fitness (CTL)**: $CTL_t = CTL_{t-1} + (TSS_t - CTL_{t-1}) / 42$
+- **Fatigue (ATL)**: $ATL_t = ATL_{t-1} + (TSS_t - ATL_{t-1}) / 7$
 - **Form (TSB)**: $TSB_t = CTL_t - ATL_t$
 
 ### 4. Jack Daniels VDOT / VO2max
@@ -144,9 +162,9 @@ $$\text{VDOT} = \frac{\text{VO}_2}{\%VO_{2\text{max}}}$$
 4. **Consecutive High-Load Days (15% weight)**: Days with TSS $\ge 60$.
 5. **Biomechanical Cadence & Decoupling (15% weight)**: Cadence drop $>4\%$ or Decoupling $>8\%$.
 
-> ⚠️ **DISCLAIMER**: The Training-Stress & Injury-Risk Indicator is an operational load monitoring tool based on physiological training variance. It is **NOT** a medical diagnostic tool or clinical injury predictor. Always listen to your body and consult qualified healthcare professionals.
+> **DISCLAIMER**: The Training-Stress & Injury-Risk Indicator is an operational load monitoring tool based on physiological training variance. It is **NOT** a medical diagnostic tool or clinical injury predictor. Always listen to your body and consult qualified healthcare professionals.
 
 ---
 
-## 📄 License
+## License
 MIT License. Built for runners, coaches, and sports science enthusiasts.

@@ -70,7 +70,7 @@ class InjuryRiskEngine:
             status_color = "#10B981"  # Neon Emerald
         elif composite_score < 50:
             overall_status = "Productive Build / Moderate Stress"
-            status_color = "#06B6D4"  # Cyan
+            status_color = "#4D71B2"  # Blue-slate
         elif composite_score < 75:
             overall_status = "Caution / Elevated Load Ramp"
             status_color = "#F59E0B"  # Amber
@@ -333,7 +333,7 @@ class InjuryRiskEngine:
                 guidance.append(s.recommendation)
 
         if score > 70:
-            guidance.insert(0, "🚨 Primary Action: Consider reducing total weekly mileage by 20-30% for 3 to 5 days.")
+            guidance.insert(0, " Primary Action: Consider reducing total weekly mileage by 20-30% for 3 to 5 days.")
 
         return takeaways, guidance
 

@@ -6,7 +6,7 @@ import os
 import random
 import io
 from datetime import datetime, timedelta, date
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 import pandas as pd
 
 from src.models.activity import Activity
@@ -255,3 +255,50 @@ def generate_sample_garmin_and_strava_csvs(output_dir: str) -> Tuple[str, str]:
     pd.DataFrame(strava_rows).to_csv(strava_path, index=False)
 
     return garmin_path, strava_path
+
+
+def generate_synthetic_health_records(days: int = 180, seed: int = 42) -> List[Dict[str, Any]]:
+    """Generates realistic daily sleep and health telemetry records."""
+    random.seed(seed)
+    records = []
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=days)
+    curr = start_date
+
+    while curr <= end_date:
+        # Sleep duration between 6.5 and 8.8 hours
+        total_hours = random.uniform(6.5, 8.8)
+        total_sec = total_hours * 3600.0
+        
+        deep_pct = random.uniform(0.18, 0.26)
+        rem_pct = random.uniform(0.20, 0.28)
+        light_pct = 1.0 - deep_pct - rem_pct
+
+        deep_sec = total_sec * deep_pct
+        rem_sec = total_sec * rem_pct
+        light_sec = total_sec * light_pct
+
+        # Sleep score calculated from duration & deep sleep balance
+        score = min(98.0, max(60.0, (total_hours / 8.0) * 85.0 + random.uniform(-5, 10)))
+        rhr = round(random.uniform(46.0, 54.0), 1)
+        hr_min = round(rhr - random.uniform(2, 5), 1)
+        hr_max = round(random.uniform(155.0, 185.0), 1)
+
+        records.append({
+            "date": curr,
+            "resting_hr": rhr,
+            "hr_min": hr_min,
+            "hr_max": hr_max,
+            "stress_avg": round(random.uniform(18.0, 34.0), 1),
+            "steps": random.randint(7000, 16000),
+            "sleep_duration_seconds": round(total_sec, 0),
+            "deep_sleep_seconds": round(deep_sec, 0),
+            "light_sleep_seconds": round(light_sec, 0),
+            "rem_sleep_seconds": round(rem_sec, 0),
+            "sleep_score": round(score, 1),
+            "weight_kg": round(70.0 + random.uniform(-0.8, 0.8), 1),
+            "calories_total": random.randint(2100, 3100),
+        })
+        curr += timedelta(days=1)
+
+    return records

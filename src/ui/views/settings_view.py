@@ -6,6 +6,7 @@ import streamlit as st
 
 from src.models.user_profile import UserProfile
 from src.db.database import DatabaseManager
+from src.ui.icons import render_view_header, render_section_header
 
 
 def render_settings_view(
@@ -13,11 +14,13 @@ def render_settings_view(
     user_profile: UserProfile,
     on_profile_updated: Callable[[UserProfile], None],
 ) -> None:
-    st.markdown("## ⚙️ Physiological Parameters & Athlete Profile")
-    st.caption("Customize your physiological baselines to ensure precise TRIMP, rTSS, Heart Rate Zones, and Training Stress calculations.")
+    render_view_header(
+        title="Physiological Parameters & Athlete Profile",
+        caption="Customize your physiological baselines to ensure precise TRIMP, hrTSS, Heart Rate Zones, and Training Stress calculations.",
+    )
 
     with st.form("user_profile_form"):
-        st.markdown("### 🏃 Athlete Profile")
+        render_section_header("Athlete Profile")
         col1, col2, col3 = st.columns(3)
         with col1:
             name = st.text_input("Athlete Name", value=user_profile.name)
@@ -28,7 +31,7 @@ def render_settings_view(
         with col3:
             units = st.selectbox("Preferred Units", ["metric", "imperial"], index=0 if user_profile.units == "metric" else 1)
 
-        st.markdown("### 🫀 Cardiovascular & Threshold Baselines")
+        render_section_header("Cardiovascular & Threshold Baselines", icon_name="heartbeat")
         c1, c2, c3 = st.columns(3)
         with c1:
             resting_hr = st.number_input("Resting Heart Rate (bpm)", min_value=30, max_value=100, value=user_profile.resting_hr)
@@ -46,7 +49,7 @@ def render_settings_view(
             t_sec = st.number_input("Threshold Pace (Seconds)", min_value=0, max_value=59, value=cur_remainder_sec)
             threshold_pace_sec_km = float(t_min * 60 + t_sec)
 
-        st.markdown("### 🎯 Target Race Goal")
+        render_section_header("Target Race Goal")
         rc1, rc2 = st.columns(2)
         with rc1:
             race_dist = st.selectbox(
@@ -58,7 +61,7 @@ def render_settings_view(
         with rc2:
             race_date_str = st.text_input("Target Race Date (YYYY-MM-DD)", value=user_profile.target_race_date or "")
 
-        submitted = st.form_submit_button("💾 Save Profile Configuration", type="primary")
+        submitted = st.form_submit_button("Save Profile Configuration", type="primary")
         if submitted:
             updated_profile = UserProfile(
                 user_id=user_profile.user_id,
@@ -77,4 +80,4 @@ def render_settings_view(
             )
             db_manager.save_user_profile(updated_profile)
             on_profile_updated(updated_profile)
-            st.success("✅ Profile settings saved successfully! Training metrics updated.")
+            st.success("Profile settings saved successfully! Training metrics updated.")

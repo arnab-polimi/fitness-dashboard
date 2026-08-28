@@ -15,6 +15,7 @@ from src.analytics.running_metrics import (
 )
 from src.analytics.race_predictor import RacePredictor
 from src.analytics.injury_risk import InjuryRiskEngine
+from src.analytics.sleep_score import SleepScoreCalculator
 
 __all__ = [
     "calculate_banister_trimp",
@@ -30,4 +31,5 @@ __all__ = [
     "RunningMetricsCalculator",
     "RacePredictor",
     "InjuryRiskEngine",
+    "SleepScoreCalculator",
 ]

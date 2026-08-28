@@ -16,6 +16,7 @@ from src.ui.charts import (
     plot_recovery_telemetry_chart,
     PLOT_LAYOUT_DARK,
 )
+from src.ui.icons import render_view_header, render_section_header
 import plotly.graph_objects as go
 
 
@@ -27,8 +28,11 @@ def render_cardiovascular_view(
     activities_df: pd.DataFrame,
     health_df: Optional[pd.DataFrame] = None,
 ) -> None:
-    st.markdown("## 🫀 Cardiovascular Telemetry & Aerobic Efficiency")
-    st.caption("Track mitochondrial density progression, resting HR recovery baselines, cardiac drift, and polarized zone balance.")
+    render_view_header(
+        title="Cardiovascular Telemetry & Aerobic Efficiency",
+        caption="Track mitochondrial density progression, resting HR recovery baselines, cardiac drift, and polarized zone balance.",
+        icon_name="heartbeat",
+    )
 
     if activities_df.empty and (health_df is None or health_df.empty):
         st.info("No activity or health data available. Synchronize GarminDb or import activities to analyze cardiovascular metrics.")
@@ -38,12 +42,12 @@ def render_cardiovascular_view(
     if health_df is not None and not health_df.empty and "resting_hr" in health_df.columns:
         valid_rhr = health_df[health_df["resting_hr"].notna()]
         if not valid_rhr.empty:
-            st.markdown("### 🛌 Garmin Recovery & Resting Heart Rate Telemetry")
+            render_section_header("Garmin Recovery & Resting Heart Rate Telemetry", icon_name="heartbeat")
             st.plotly_chart(plot_recovery_telemetry_chart(health_df), use_container_width=True)
 
     # Top Row: HR vs Pace and Efficiency Factor
     if not activities_df.empty:
-        st.markdown("### ⚡ Aerobic Profile & Efficiency Factor")
+        render_section_header("Aerobic Profile & Efficiency Factor", icon_name="heartbeat")
         col1, col2 = st.columns(2)
         with col1:
             st.plotly_chart(plot_hr_vs_pace_scatter(activities_df), use_container_width=True)
@@ -95,7 +99,7 @@ def render_cardiovascular_view(
             st.plotly_chart(plot_hr_zones_distribution(activities_df, user_profile), use_container_width=True)
 
     # Educational Expander
-    with st.expander("🔬 Deep Dive: Efficiency Factor (EF) and Aerobic Decoupling (Pw:HR)"):
+    with st.expander("Deep Dive: Efficiency Factor (EF) and Aerobic Decoupling (Pw:HR)"):
         st.markdown("""
         - **Efficiency Factor (EF)**: Calculated as $\\text{Speed (m/min)} / \\text{Average HR (bpm)}$.
           - As your aerobic base deepens and stroke volume increases, EF goes up (you run faster at the same heart rate).

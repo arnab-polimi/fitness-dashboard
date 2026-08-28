@@ -110,3 +110,42 @@ def test_training_load_engine():
     assert daily_loads[-1].atl > daily_loads[-1].ctl
     # Form (TSB) should be negative (Fatigued)
     assert daily_loads[-1].tsb < 0
+
+
+def test_training_load_matches_garmin_study_hrtss_and_discrete_updates():
+    profile = UserProfile(lthr=178)
+    activity = Activity(
+        id="threshold_run",
+        source="garmin",
+        start_time=datetime(2026, 8, 1, 7, 0),
+        sport_type="run",
+        duration_seconds=3600,
+        moving_time_seconds=3600,
+        avg_hr=178,
+    )
+
+    loads = TrainingLoadEngine.calculate_daily_metrics(
+        [activity], profile, start_date=date(2026, 8, 1), end_date=date(2026, 8, 1)
+    )
+
+    # Garmin study: TSS = 60 × (178 / 178)^2 × 100 / 60 = 100,
+    # then CTL += TSS / 42 and ATL += TSS / 7.
+    assert loads[0].total_tss == 100.0
+    assert loads[0].ctl == pytest.approx(100 / 42, abs=0.01)
+    assert loads[0].atl == pytest.approx(100 / 7, abs=0.01)
+    assert loads[0].tsb == pytest.approx((100 / 42) - (100 / 7), abs=0.01)
+
+
+def test_training_load_excludes_non_running_activities():
+    profile = UserProfile(lthr=178)
+    activity = Activity(
+        id="ride",
+        source="garmin",
+        start_time=datetime(2026, 8, 1, 7, 0),
+        sport_type="cycling",
+        duration_seconds=3600,
+        moving_time_seconds=3600,
+        avg_hr=150,
+    )
+
+    assert TrainingLoadEngine.calculate_daily_metrics([activity], profile) == []

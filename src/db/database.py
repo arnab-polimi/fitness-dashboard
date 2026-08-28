@@ -11,6 +11,7 @@ import pandas as pd
 from src.models.activity import Activity
 from src.models.user_profile import UserProfile
 from src.models.metrics import DailyLoad
+from src.analytics.sleep_score import SleepScoreCalculator
 from src.db.schema import (
     ACTIVITIES_TABLE_SCHEMA,
     ACTIVITIES_INDEXES,
@@ -259,6 +260,9 @@ class DatabaseManager:
         df["start_time"] = pd.to_datetime(df["start_time"])
         df["distance_km"] = df["distance_meters"] / 1000.0
         df["duration_min"] = df["duration_seconds"] / 60.0
+        if "speed_kmh" not in df.columns:
+            dur_hours = (df["duration_seconds"] / 3600.0).replace(0, float("nan"))
+            df["speed_kmh"] = (df["distance_km"] / dur_hours).fillna(0.0)
         return df
 
     def count_activities(self) -> int:
@@ -377,6 +381,11 @@ class DatabaseManager:
         """Saves daily health telemetry from GarminDb (RHR, Sleep, Stress, Steps, Weight)."""
         if not records:
             return 0
+
+        # Calculate sleep scores if not present
+        if any(r.get("sleep_score") is None and (r.get("sleep_duration_seconds") or 0) > 0 for r in records):
+            records = SleepScoreCalculator.calculate_records(records, overwrite_existing=False)
+
         sql = """
         INSERT OR REPLACE INTO daily_health (
             date, resting_hr, hr_min, hr_max, stress_avg,
@@ -410,12 +419,46 @@ class DatabaseManager:
             conn.commit()
             return len(rows)
 
+    def backfill_missing_sleep_scores(self) -> int:
+        """
+        Calculates and updates sleep_score for any existing database records missing a score.
+        Returns number of updated records.
+        """
+        with self.get_connection() as conn:
+            df = pd.read_sql_query("SELECT * FROM daily_health ORDER BY date ASC", conn)
+            if df.empty or "sleep_duration_seconds" not in df.columns:
+                return 0
+
+            # Check if there are records that need calculation
+            needs_calc = (df["sleep_duration_seconds"] > 0) & (df["sleep_score"].isna() | (df["sleep_score"] == 0))
+            if not needs_calc.any():
+                return 0
+
+            updated_df = SleepScoreCalculator.calculate_dataframe(df, overwrite_existing=False)
+            update_rows = []
+            for _, r in updated_df[needs_calc].iterrows():
+                if pd.notna(r["sleep_score"]):
+                    update_rows.append((float(r["sleep_score"]), str(r["date"])))
+
+            if update_rows:
+                cursor = conn.cursor()
+                cursor.executemany(
+                    "UPDATE daily_health SET sleep_score = ? WHERE date = ?",
+                    update_rows,
+                )
+                conn.commit()
+                return len(update_rows)
+        return 0
+
     def get_daily_health_df(
         self,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> pd.DataFrame:
-        """Returns daily health telemetry as DataFrame."""
+        """Returns daily health telemetry as DataFrame with guaranteed sleep score calculation."""
+        # Auto-backfill if needed
+        self.backfill_missing_sleep_scores()
+
         query = "SELECT * FROM daily_health WHERE 1=1"
         params: List[Any] = []
         if start_date:

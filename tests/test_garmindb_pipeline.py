@@ -125,3 +125,11 @@ def test_garmindb_pipeline_sync(mock_garmindb_dir):
     # Verify Profile updated
     assert profile.resting_hr == 51
     assert profile.weight_kg == 65.5
+
+
+def test_raw_running_activities_reads_only_garmin_runs(mock_garmindb_dir):
+    activities = GarminDbPipeline.get_raw_running_activities(mock_garmindb_dir)
+
+    assert len(activities) == 1
+    assert activities[0].source == "garmin"
+    assert activities[0].sport_type == "run"

@@ -8,6 +8,7 @@ import pandas as pd
 from src.models.activity import Activity
 from src.models.user_profile import UserProfile
 from src.analytics.running_metrics import format_pace_sec_km
+from src.ui.icons import render_view_header, render_section_header
 
 
 def render_activity_log_view(
@@ -15,8 +16,11 @@ def render_activity_log_view(
     user_profile: UserProfile,
     activities_df: pd.DataFrame,
 ) -> None:
-    st.markdown("## 🏃 Activity Log & Workout Inspector")
-    st.caption("Comprehensive log of all canonical, deduplicated activities across Garmin, Strava, and manual uploads.")
+    render_view_header(
+        title="Activity Log & Workout Inspector",
+        caption="Comprehensive log of all canonical, deduplicated activities across Garmin, Strava, and manual uploads.",
+        icon_name="overview",
+    )
 
     if activities_df.empty:
         st.info("No activities found in database.")
@@ -55,7 +59,7 @@ def render_activity_log_view(
     display_df = pd.DataFrame()
     display_df["Date"] = pd.to_datetime(filtered_df["start_time"]).dt.strftime("%Y-%m-%d %H:%M")
     display_df["Title"] = filtered_df["title"]
-    display_df["Sport"] = filtered_df["sport_type"]
+    display_df["Sport"] = filtered_df["sport_type"].apply(lambda s: s.replace("_", " ").title() if pd.notna(s) else "")
     display_df["Source"] = filtered_df["source"]
     display_df["Distance (km)"] = filtered_df["distance_km"].round(2)
     display_df["Duration"] = filtered_df["duration_seconds"].apply(lambda s: f"{int(s//3600):02d}:{int((s%3600)//60):02d}:{int(s%60):02d}")
@@ -72,7 +76,7 @@ def render_activity_log_view(
     )
 
     # Activity Inspector Expander
-    st.markdown("### 🔍 Workout Inspector")
+    render_section_header("Workout Inspector")
     activity_options = {f"{a.start_time.strftime('%Y-%m-%d %H:%M')} - {a.title} ({a.distance_km:.1f} km)": a.id for a in sorted(activities, key=lambda x: x.start_time, reverse=True)}
 
     if activity_options:
@@ -100,5 +104,5 @@ def render_activity_log_view(
                 st.metric("Decoupling", f"{selected_act.aerobic_decoupling:.1f}%" if selected_act.aerobic_decoupling is not None else "--")
 
             if selected_act.raw_data:
-                with st.expander("📄 Raw Ingested Metadata"):
+                with st.expander("Raw Ingested Metadata"):
                     st.json(selected_act.raw_data)

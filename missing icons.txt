@@ -1,0 +1,106 @@
+================================================================================
+APEX FITNESS DASHBOARD - MISSING ICONS AUDIT LIST (UPDATED)
+================================================================================
+
+This document lists all icons required for the platform, detailing which icons 
+are already available in the /icons folder and which icons are currently missing.
+
+RECOMMENDED SPECIFICATIONS:
+- Format: PNG with transparent background
+- Resolution: 512 x 512 pixels (or 256 x 256 pixels)
+- Style: Modern, clean, monochromatic or neon-accented matching dark theme
+- Directory: Put new PNG files directly into the "icons" folder:
+             E:\fitness dashboard\icons\
+
+--------------------------------------------------------------------------------
+1. CURRENTLY AVAILABLE ICONS (IN /icons FOLDER)
+--------------------------------------------------------------------------------
+[x] running.png      - Used for Running, Trail Run, Treadmill, and Race Predictor
+[x] walking.png      - Used for Walking, Daily Movement, and Active Recovery
+[x] bike.png         - Used for Cycling, Road/Gravel/MTB Biking, and Saddle Work
+[x] swimming.png     - Used for Swimming, Pool Sessions, and Open Water
+[x] yoga.png         - Used for Yoga, Mobility, Parasympathetic Rest, and Stretch
+[x] heartbeat.png    - Used for Cardiovascular Telemetry, Resting HR, and Heart Rate
+[x] hiking.png       - Used for Hiking & Mountain Trail Elevation Intelligence
+[x] bench.png        - Used for Strength Training, Gym Workouts, and Bench Press
+[x] multisport.png   - Used for Multi-Sport & Cross-Training Ecosystem Overview
+
+--------------------------------------------------------------------------------
+2. REMAINING MISSING ACTIVITY & SPORT DISCIPLINE ICONS
+--------------------------------------------------------------------------------
+[ ] treadmill.png
+    - Description: Treadmill machine or indoor runner
+    - Used in: Treadmill / Indoor running activity distinction
+    - Filename suggestion: treadmill.png
+
+[ ] rowing.png
+    - Description: Rowing scull or indoor rower ergometer
+    - Used in: Rowing cardio workouts
+    - Filename suggestion: rowing.png
+
+[ ] elliptical.png
+    - Description: Elliptical / cross-trainer cardio machine
+    - Used in: Low-impact aerobic cross-training
+    - Filename suggestion: elliptical.png
+
+[ ] pilates.png
+    - Description: Mat exercises, flexibility, core posture
+    - Used in: Dedicated Pilates and core stability practices
+    - Filename suggestion: pilates.png
+
+--------------------------------------------------------------------------------
+3. REMAINING MISSING NAVIGATION & DASHBOARD VIEW ICONS
+--------------------------------------------------------------------------------
+[ ] overview.png
+    - Description: Executive summary dashboard, performance gauge, or pulse
+    - Used in: Executive Overview sidebar menu & view header
+    - Filename suggestion: overview.png (or dashboard.png)
+
+[ ] training_load.png
+    - Description: Performance management line chart (PMC), fitness/fatigue curves
+    - Used in: Training Load & PMC sidebar menu & view header
+    - Filename suggestion: training_load.png (or pmc.png)
+
+[ ] injury_risk.png
+    - Description: Safety shield, risk indicator, or physiological safeguard
+    - Used in: Training Stress & Injury Risk Indicator view
+    - Filename suggestion: injury_risk.png (or shield.png)
+
+[ ] insights.png
+    - Description: Neural intelligence, brain, lightbulb, or narrative data
+    - Used in: "What is Happening to My Fitness?" narrative view
+    - Filename suggestion: insights.png (or brain.png)
+
+[ ] race_predictor.png
+    - Description: Checkered finish flag, trophy, podium, or target crosshair
+    - Used in: Race Predictor & VDOT Calculator view
+    - Filename suggestion: race_predictor.png (or trophy.png)
+
+[ ] activity_log.png
+    - Description: Clipboard, checklist, inspector magnifier, or data log
+    - Used in: Activity Log & Workout Inspector view
+    - Filename suggestion: activity_log.png (or log.png)
+
+[ ] import.png
+    - Description: Sync arrows, cloud download, GarminDb database pipeline
+    - Used in: Data Import & Sync Engine view
+    - Filename suggestion: import.png (or sync.png)
+
+[ ] settings.png
+    - Description: Athlete profile avatar, gear/cog, or physiological parameters
+    - Used in: Athlete Settings view
+    - Filename suggestion: settings.png (or profile.png)
+
+--------------------------------------------------------------------------------
+4. MISSING METRIC & TELEMETRY INDICATOR ICONS (OPTIONAL ENHANCEMENTS)
+--------------------------------------------------------------------------------
+[ ] cadence.png      - Steps/min, metronome, footstrike turnover
+[ ] elevation.png    - Mountain incline, cumulative D+ ascent
+[ ] calories.png     - Metabolic burn, flame, kilocalories
+[ ] speed.png        - Speedometer, velocity, cruising speed
+[ ] recovery.png     - Moon / zzz, overnight HRV, sleep quality
+[ ] distance.png     - Route marker, mileage, odometer
+
+================================================================================
+END OF MISSING ICONS LIST
+================================================================================
