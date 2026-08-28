@@ -13,7 +13,7 @@ ENV/
 *.db
 *.sqlite3
 *.duckdb
-fitness_data.db
+
 
 # Testing & Coverage
 .pytest_cache/
