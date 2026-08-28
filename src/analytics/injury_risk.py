@@ -2,7 +2,7 @@
 Transparent Multi-Signal Training-Stress & Injury-Risk Assessment Engine.
 Clearly labeled as a training-load risk indicator, NOT a medical prediction.
 """
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict
 import numpy as np
 
 from src.models.activity import Activity

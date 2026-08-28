@@ -124,6 +124,18 @@ class TrainingLoadEngine:
     ATL_TAU = 7.0   # Fatigue time constant
 
     @classmethod
+    def compute_continuous_pmc(
+        cls,
+        activities: List[Activity],
+        user_profile: Optional[UserProfile] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+    ) -> List[DailyLoad]:
+        """Alias for calculate_daily_metrics using default user profile if unprovided."""
+        profile = user_profile or UserProfile()
+        return cls.calculate_daily_metrics(activities, profile, start_date=start_date, end_date=end_date)
+
+    @classmethod
     def calculate_daily_metrics(
         cls,
         activities: List[Activity],
