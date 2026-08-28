@@ -327,10 +327,11 @@ BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 <div style="flex: 1; min-width: 250px;">
 <div style="font-size: 0.78rem; color: #c8b99c; margin-bottom: 6px;"><b>Physiological Breakdown vs Age Group Norms:</b></div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; color: #f0e2a3;">
-<div>💓 <b>Resting HR Impact:</b> <span style="color: #f0e2a3;">{report.rhr_impact_years:+.1f} yrs</span></div>
-<div>📈 <b>Fitness Volume (CTL):</b> <span style="color: #f0e2a3;">{report.ctl_impact_years:+.1f} yrs</span></div>
-<div>🏃 <b>Aerobic Capacity (VDOT):</b> <span style="color: #f0e2a3;">{report.vdot_impact_years:+.1f} yrs</span></div>
-<div>💤 <b>Sleep Architecture:</b> <span style="color: #f0e2a3;">{report.sleep_impact_years:+.1f} yrs</span></div>
+<div><b>Resting HR Impact:</b> <span style="color: #f0e2a3;">{report.rhr_impact_years:+.1f} yrs</span></div>
+<div><b>Fitness Volume (CTL):</b> <span style="color: #f0e2a3;">{report.ctl_impact_years:+.1f} yrs</span></div>
+<div><b>Aerobic Capacity (VDOT):</b> <span style="color: #f0e2a3;">{report.vdot_impact_years:+.1f} yrs</span></div>
+<div><b>Sleep Architecture:</b> <span style="color: #f0e2a3;">{report.sleep_impact_years:+.1f} yrs</span></div>
+
 </div>
 </div>
 </div>
