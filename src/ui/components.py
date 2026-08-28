@@ -308,9 +308,10 @@ def render_fitness_age_card(report: Any) -> None:
     delta_str = f"{abs(report.age_delta):.1f} Years Younger" if report.age_delta <= 0 else f"{report.age_delta:.1f} Years Older"
     delta_color = "#f0e2a3" if report.age_delta <= 0 else "#f9d4bb"
     opt_badge = get_icon_badge_html("optimalhealth", icon_size=18, badge_size=28, margin_right=8)
-
+    rhr_c = getattr(report, "rhr_status_color", "#c1d37f")
 
     html_content = f"""<div style="background: linear-gradient(135deg, #1c1716 0%, #26201e 100%); border: 1px solid #3b322e; border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 6px 20px rgba(0,0,0,0.45);">
+
 <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #332a27; padding-bottom: 12px; margin-bottom: 16px;">
 <div>
 <div style="display: flex; align-items: center; margin-bottom: 4px;">
@@ -339,12 +340,12 @@ BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 <div style="flex: 1; min-width: 250px;">
 <div style="font-size: 0.78rem; color: #c8b99c; margin-bottom: 6px;"><b>Physiological Breakdown vs Age Group Norms:</b></div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; color: #f0e2a3;">
-<div><b style="color: #f87171;">Resting HR Impact:</b> <span style="color: #f87171;">{report.rhr_impact_years:+.1f} yrs</span></div>
-
+<div><b style="color: {rhr_c};">Resting HR Impact:</b> <span style="color: {rhr_c};">{report.rhr_impact_years:+.1f} yrs</span></div>
 <div><b>Fitness Volume (CTL):</b> <span style="color: #f0e2a3;">{report.ctl_impact_years:+.1f} yrs</span></div>
 <div><b>Aerobic Capacity (VDOT):</b> <span style="color: #f0e2a3;">{report.vdot_impact_years:+.1f} yrs</span></div>
 <div><b>Sleep Architecture:</b> <span style="color: #f0e2a3;">{report.sleep_impact_years:+.1f} yrs</span></div>
 </div>
+
 </div>
 </div>
 </div>"""

@@ -22,6 +22,7 @@ class FitnessAgeReport:
     ctl_impact_years: float
     vdot_impact_years: float
     sleep_impact_years: float
+    rhr_status_color: str  # Moss green (#c1d37f) if <= 7d avg, Fatigue red (#f87171) if > 7d avg
     detected_patterns: List[Dict[str, str]]
 
 
@@ -46,14 +47,24 @@ class FitnessAgeEngine:
         pop_avg_rhr = 68.0 if user_profile.gender == "female" else 65.0
         
         recent_rhr = user_profile.resting_hr
+        rhr_status_color = "#c1d37f"  # Moss Green (within limits of 7d avg or below)
+
         if health_df is not None and not health_df.empty and "resting_hr" in health_df.columns:
             valid_rhr = health_df["resting_hr"].dropna()
             if not valid_rhr.empty:
                 recent_rhr = float(valid_rhr.tail(14).mean())
+                if len(valid_rhr) >= 2:
+                    latest_rhr = float(valid_rhr.iloc[-1])
+                    avg_7d_rhr = float(valid_rhr.tail(7).mean())
+                    if latest_rhr > avg_7d_rhr:
+                        rhr_status_color = "#f87171"  # Fatigue Red (elevated above 7d average)
+                    else:
+                        rhr_status_color = "#c1d37f"  # Moss Green (within/below 7d average)
 
         # RHR Impact: ~0.55 years per 1 bpm lower than population average (max offset ±7 years)
         rhr_diff = pop_avg_rhr - recent_rhr
         rhr_impact = max(-8.0, min(8.0, rhr_diff * -0.45))
+
 
         # 2. Training Volume & Fitness (CTL) Impact
         recent_ctl = 25.0
@@ -117,8 +128,10 @@ class FitnessAgeEngine:
             ctl_impact_years=round(ctl_impact, 1),
             vdot_impact_years=round(vdot_impact, 1),
             sleep_impact_years=round(sleep_impact, 1),
+            rhr_status_color=rhr_status_color,
             detected_patterns=patterns
         )
+
 
     @classmethod
     def detect_patterns(
