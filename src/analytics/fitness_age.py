@@ -93,15 +93,16 @@ class FitnessAgeEngine:
 
         # Categorization
         if age_delta <= -7.0:
-            category = "🥇 Elite Physiological Age"
+            category = "Elite Physiological Age"
         elif age_delta <= -3.0:
-            category = "⚡ Superior Fitness Level"
+            category = "Superior Fitness Level"
         elif age_delta <= 1.0:
-            category = "✅ Optimal Conditioning"
+            category = "Optimal Conditioning"
         elif age_delta <= 5.0:
-            category = "⚠️ Mild Conditioning Lag"
+            category = "Mild Conditioning Lag"
         else:
-            category = "🚨 Sub-Optimal Conditioning"
+            category = "Sub-Optimal Conditioning"
+
 
         # Detect Physiological Patterns
         patterns = cls.detect_patterns(user_profile, daily_df, health_df)

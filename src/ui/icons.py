@@ -1,5 +1,5 @@
 """
-Centralized icon management system for ApexFitness.
+Centralized icon management system for BioStrata.
 Loads local PNG icons directly from the /icons directory, encodes them to base64 data URIs,
 applies inversion filters for high-contrast visibility on dark backgrounds, and renders clean HTML elements.
 """

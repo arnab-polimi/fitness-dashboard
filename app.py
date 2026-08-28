@@ -1,5 +1,5 @@
 """
-ApexFitness - Professional Personal Fitness Intelligence Dashboard.
+BioStrata - Professional Personal Fitness Intelligence Dashboard.
 Main Streamlit Application Entrypoint with GarminDb Pipeline Support.
 """
 import streamlit as st
@@ -7,11 +7,12 @@ import pandas as pd
 
 # 1. Page Configuration
 st.set_page_config(
-    page_title="ApexFitness | Personal Fitness Intelligence",
+    page_title="BioStrata | Personal Fitness Intelligence",
     page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
 
 from src.models.user_profile import UserProfile
 from src.db.database import DatabaseManager
@@ -168,8 +169,9 @@ with st.sidebar:
             {run_brand_icon}
             <div>
                 <div style="font-size: 1.15rem; font-weight: 800; color: #c1d37f; letter-spacing: -0.01em; line-height: 1.1;">
-                    APEX FITNESS
+                    BIOSTRATA
                 </div>
+
                 <div style="font-size: 0.68rem; color: #c8b99c; letter-spacing: 0.08em; text-transform: uppercase;">
                     Physical Intelligence Platform
                 </div>
@@ -426,12 +428,13 @@ with st.sidebar:
     st.markdown(
         """
         <div style="font-size: 0.68rem; color: #64748b; text-align: center; line-height: 1.4;">
-            ApexFitness Platform<br>
+            BioStrata Platform<br>
             Running • Walking • Cycling • Hiking • Yoga • Swimming
         </div>
         """,
         unsafe_allow_html=True,
     )
+
 
 
 # 4. View Router
