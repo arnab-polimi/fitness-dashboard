@@ -23,14 +23,18 @@ def render_metric_card(
         cls_name = "metric-delta-pos" if delta_type == "pos" else ("metric-delta-neg" if delta_type == "neg" else "")
         delta_html = f'<span class="{cls_name}">{delta}</span>'
 
+    is_hr = "bpm" in value.lower() or "heart" in label.lower() or "hr" in label.lower().split()
+    val_style = ' style="color: #f87171;"' if is_hr else ""
+
     card_html = f"""
     <div class="metric-card">
         <div class="metric-label">{label}</div>
-        <div class="metric-value">{value}</div>
+        <div class="metric-value"{val_style}>{value}</div>
         <div class="metric-sub">{delta_html} <span>{subtext}</span></div>
     </div>
     """
     st.markdown(card_html, unsafe_allow_html=True)
+
 
 
 def render_form_dynamics_hero(
@@ -335,7 +339,8 @@ BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 <div style="flex: 1; min-width: 250px;">
 <div style="font-size: 0.78rem; color: #c8b99c; margin-bottom: 6px;"><b>Physiological Breakdown vs Age Group Norms:</b></div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; color: #f0e2a3;">
-<div><b style="color: #f87171;">Resting HR Impact:</b> <span style="color: #f0e2a3;">{report.rhr_impact_years:+.1f} yrs</span></div>
+<div><b style="color: #f87171;">Resting HR Impact:</b> <span style="color: #f87171;">{report.rhr_impact_years:+.1f} yrs</span></div>
+
 <div><b>Fitness Volume (CTL):</b> <span style="color: #f0e2a3;">{report.ctl_impact_years:+.1f} yrs</span></div>
 <div><b>Aerobic Capacity (VDOT):</b> <span style="color: #f0e2a3;">{report.vdot_impact_years:+.1f} yrs</span></div>
 <div><b>Sleep Architecture:</b> <span style="color: #f0e2a3;">{report.sleep_impact_years:+.1f} yrs</span></div>
