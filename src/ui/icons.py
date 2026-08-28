@@ -58,7 +58,11 @@ ICON_MAPPINGS: Dict[str, str] = {
     "curious": "curious.png",
     "pattern": "curious.png",
     "patterns": "curious.png",
+    "optimalhealth": "optimalhealth.png",
+    "biostrata": "optimalhealth.png",
+    "fitness_age": "optimalhealth.png",
     "import": "import.png",
+
 
     "sync": "import.png",
     "settings": "settings.png",

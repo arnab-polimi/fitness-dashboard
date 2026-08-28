@@ -5,7 +5,8 @@ from typing import List, Optional
 import streamlit as st
 
 from src.models.metrics import DailyLoad, FitnessInsight, RacePrediction, RiskReport, RiskSignal
-from src.ui.icons import render_section_header
+from src.ui.icons import render_section_header, get_icon_badge_html
+
 
 
 
@@ -302,20 +303,25 @@ def render_fitness_age_card(report: Any) -> None:
 
     delta_str = f"{abs(report.age_delta):.1f} Years Younger" if report.age_delta <= 0 else f"{report.age_delta:.1f} Years Older"
     delta_color = "#f0e2a3" if report.age_delta <= 0 else "#f9d4bb"
+    opt_badge = get_icon_badge_html("optimalhealth", icon_size=24, badge_size=38, margin_right=12)
 
     html_content = f"""<div style="background: linear-gradient(135deg, #1c1716 0%, #26201e 100%); border: 1px solid #3b322e; border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 6px 20px rgba(0,0,0,0.45);">
 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #332a27; padding-bottom: 12px; margin-bottom: 16px;">
+<div style="display: flex; align-items: center;">
+{opt_badge}
 <div>
 <span style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #e2d58b; letter-spacing: 0.08em;">
 BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 </span>
 <h3 style="margin: 4px 0 0 0; font-size: 1.35rem; color: #f0e2a3; font-weight: 800;">{report.category}</h3>
 </div>
+</div>
 <div style="text-align: right;">
 <div style="font-size: 0.75rem; color: #c8b99c;">BIOSTRATA SCORE</div>
 <div style="font-size: 1.6rem; font-weight: 800; color: #f0e2a3; font-family: 'JetBrains Mono', monospace;">{report.fitness_score:.0f}<span style="font-size: 0.9rem; color: #c8b99c;">/100</span></div>
 </div>
 </div>
+
 
 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 18px;">
 <div style="background: rgba(240, 226, 163, 0.08); border: 1px solid rgba(240, 226, 163, 0.25); border-radius: 10px; padding: 12px 18px; text-align: center;">
