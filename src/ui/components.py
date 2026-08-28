@@ -5,6 +5,8 @@ from typing import List, Optional
 import streamlit as st
 
 from src.models.metrics import DailyLoad, FitnessInsight, RacePrediction, RiskReport, RiskSignal
+from src.ui.icons import render_section_header
+
 
 
 def render_metric_card(
@@ -342,8 +344,9 @@ def render_fitness_age_card(report: Any) -> None:
     )
 
     if report.detected_patterns:
-        st.markdown("#### 🔍 Detected Physiological Patterns & Recovery Trends")
+        render_section_header("Detected Physiological Patterns & Recovery Trends", icon_name="curious")
         for pat in report.detected_patterns:
+
             border_c = "#3b322e"
             bg_c = "rgba(255, 255, 255, 0.02)"
             if pat["type"] == "positive":

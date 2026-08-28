@@ -55,7 +55,11 @@ ICON_MAPPINGS: Dict[str, str] = {
     "insights": "insights.png",
     "analysis": "insights.png",
     "intelligence": "insights.png",
+    "curious": "curious.png",
+    "pattern": "curious.png",
+    "patterns": "curious.png",
     "import": "import.png",
+
     "sync": "import.png",
     "settings": "settings.png",
     "athlete": "settings.png",
