@@ -14,24 +14,25 @@ PLOT_LAYOUT_DARK = dict(
     paper_bgcolor="rgba(18, 14, 13, 0.0)",
     plot_bgcolor="rgba(26, 20, 19, 0.6)",
     font=dict(family="Inter, sans-serif", color="#f0e2a3", size=11),
-    margin=dict(l=40, r=20, t=40, b=40),
+    margin=dict(l=28, r=15, t=40, b=35),
+    autosize=True,
     xaxis=dict(
         gridcolor="#3b322e",
         zerolinecolor="#7d7059",
         showgrid=True,
-        tickfont=dict(color="#c8b99c"),
+        tickfont=dict(color="#c8b99c", size=10),
     ),
     yaxis=dict(
         gridcolor="#3b322e",
         zerolinecolor="#7d7059",
         showgrid=True,
-        tickfont=dict(color="#c8b99c"),
+        tickfont=dict(color="#c8b99c", size=10),
     ),
     legend=dict(
         bgcolor="rgba(28, 23, 22, 0.85)",
         bordercolor="#3b322e",
         borderwidth=1,
-        font=dict(color="#f0e2a3", size=10),
+        font=dict(color="#f0e2a3", size=9.5),
     ),
     hoverlabel=dict(
         bgcolor="#1c1716",
@@ -181,17 +182,18 @@ def plot_pmc_chart(daily_df: pd.DataFrame) -> go.Figure:
 
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
-        height=560,
-        margin=dict(l=40, r=20, t=75, b=40),
+        height=540,
+        margin=dict(l=28, r=15, t=65, b=35),
         hovermode="x unified",
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.10,
-            xanchor="right",
-            x=1,
-            bgcolor="rgba(15, 23, 42, 0.85)",
-            bordercolor="rgba(255, 255, 255, 0.15)",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(28, 23, 22, 0.85)",
+            bordercolor="#3b322e",
+            font=dict(size=9.5),
         ),
     )
     fig.update_layout(layout)
@@ -1076,15 +1078,16 @@ def plot_sleep_stage_breakdown_chart(health_df: pd.DataFrame) -> go.Figure:
     layout.update(
         title="<b>Daily Sleep Architecture & Stage Distribution (Hours)</b>",
         barmode="stack",
-        height=380,
-        margin=dict(l=40, r=20, t=75, b=40),
+        height=420,
+        margin=dict(l=28, r=15, t=65, b=35),
         yaxis_title="Sleep Duration (Hours)",
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.08,
-            xanchor="right",
-            x=1,
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
             traceorder="normal",
         ),
     )
@@ -1139,9 +1142,16 @@ def plot_sleep_score_and_rhr_chart(health_df: pd.DataFrame) -> go.Figure:
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
         title="<b>Sleep Quality Score vs Resting Heart Rate Telemetry</b>",
-        height=380,
-        margin=dict(l=40, r=20, t=75, b=40),
-        legend=dict(orientation="h", yanchor="bottom", y=1.08, xanchor="right", x=1),
+        height=400,
+        margin=dict(l=28, r=15, t=65, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
+        ),
     )
     fig.update_layout(layout)
     fig.update_yaxes(title_text="Sleep Score (0-100)", range=[50, 100], secondary_y=False)

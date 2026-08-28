@@ -322,6 +322,37 @@ def apply_dark_theme():
             color: #f0e2a3 !important;
             margin-top: 12px !important;
         }
+
+        /* Mobile Screen Responsiveness Optimizations (< 768px) */
+        @media (max-width: 768px) {
+            .block-container {
+                padding-top: 1.5rem !important;
+                padding-bottom: 2.5rem !important;
+                padding-left: 0.35rem !important;
+                padding-right: 0.35rem !important;
+                max-width: 100vw !important;
+            }
+            [data-testid="column"] {
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+                margin-bottom: 6px !important;
+            }
+            .metric-card {
+                padding: 12px 14px !important;
+                margin-bottom: 8px !important;
+            }
+            .metric-value {
+                font-size: 1.38rem !important;
+            }
+            .stPlotlyChart {
+                width: 100% !important;
+                min-width: 100% !important;
+            }
+            .js-plotly-plot, .plot-container {
+                width: 100% !important;
+            }
+        }
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
