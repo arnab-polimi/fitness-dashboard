@@ -309,12 +309,12 @@ def render_fitness_age_card(report: Any) -> None:
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #332a27; padding-bottom: 12px; margin-bottom: 16px;">
                 <div>
                     <span style="font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #e2d58b; letter-spacing: 0.08em;">
-                        PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
+                        BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
                     </span>
                     <h3 style="margin: 4px 0 0 0; font-size: 1.35rem; color: #f0e2a3; font-weight: 800;">{report.category}</h3>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 0.75rem; color: #c8b99c;">FITNESS SCORE</div>
+                    <div style="font-size: 0.75rem; color: #c8b99c;">BIOSTRATA SCORE</div>
                     <div style="font-size: 1.6rem; font-weight: 800; color: #f0e2a3; font-family: 'JetBrains Mono', monospace;">{report.fitness_score:.0f}<span style="font-size: 0.9rem; color: #c8b99c;">/100</span></div>
                 </div>
             </div>
