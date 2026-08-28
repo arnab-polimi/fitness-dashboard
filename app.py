@@ -162,24 +162,15 @@ def on_profile_change(new_prof: UserProfile):
 
 # 3. Sidebar Navigation & Activity Focus Selector
 with st.sidebar:
-    run_brand_icon = get_icon_html("running", size=24, margin_right=8)
-    st.markdown(
-        f"""
-        <div style="padding: 6px 0 14px 0; display: flex; align-items: center;">
-            {run_brand_icon}
-            <div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #c1d37f; letter-spacing: -0.01em; line-height: 1.1;">
-                    BIOSTRATA
-                </div>
+    sidebar_brand_html = f"""<div style="padding: 6px 0 14px 0; display: flex; align-items: center;">
+{run_brand_icon}
+<div>
+<div style="font-size: 1.15rem; font-weight: 800; color: #c1d37f; letter-spacing: -0.01em; line-height: 1.1;">BIOSTRATA</div>
+<div style="font-size: 0.68rem; color: #c8b99c; letter-spacing: 0.08em; text-transform: uppercase;">Physical Intelligence Platform</div>
+</div>
+</div>"""
+    st.markdown(sidebar_brand_html, unsafe_allow_html=True)
 
-                <div style="font-size: 0.68rem; color: #c8b99c; letter-spacing: 0.08em; text-transform: uppercase;">
-                    Physical Intelligence Platform
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
     auto_sync_status = st.session_state.get("garmin_auto_sync_status")
     if auto_sync_status and auto_sync_status["status"] in {"success", "offline_import"}:

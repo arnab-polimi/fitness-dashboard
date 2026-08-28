@@ -326,20 +326,19 @@ BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 
 
 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 18px;">
-<div style="background: rgba(240, 226, 163, 0.08); border: 1px solid rgba(240, 226, 163, 0.25); border-radius: 10px; padding: 12px 18px; text-align: center;">
+<div style="background: rgba(193, 211, 127, 0.08); border: 1px solid rgba(193, 211, 127, 0.25); border-radius: 10px; padding: 12px 18px; text-align: center;">
 <div style="font-size: 0.72rem; color: #c8b99c; font-weight: 600;">CALCULATED FITNESS AGE</div>
-<div style="font-size: 2rem; font-weight: 800; color: #f0e2a3; font-family: 'JetBrains Mono', monospace; line-height: 1.1;">{report.fitness_age:.1f} <span style="font-size: 0.9rem;">YRS</span></div>
+<div style="font-size: 2rem; font-weight: 800; color: #c1d37f; font-family: 'JetBrains Mono', monospace; line-height: 1.1;">{report.fitness_age:.1f} <span style="font-size: 0.9rem;">YRS</span></div>
 <div style="font-size: 0.72rem; font-weight: 700; color: {delta_color}; margin-top: 4px;">{delta_str}</div>
 </div>
 
 <div style="flex: 1; min-width: 250px;">
 <div style="font-size: 0.78rem; color: #c8b99c; margin-bottom: 6px;"><b>Physiological Breakdown vs Age Group Norms:</b></div>
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; color: #f0e2a3;">
-<div><b>Resting HR Impact:</b> <span style="color: #f0e2a3;">{report.rhr_impact_years:+.1f} yrs</span></div>
+<div><b style="color: #f87171;">Resting HR Impact:</b> <span style="color: #f0e2a3;">{report.rhr_impact_years:+.1f} yrs</span></div>
 <div><b>Fitness Volume (CTL):</b> <span style="color: #f0e2a3;">{report.ctl_impact_years:+.1f} yrs</span></div>
 <div><b>Aerobic Capacity (VDOT):</b> <span style="color: #f0e2a3;">{report.vdot_impact_years:+.1f} yrs</span></div>
 <div><b>Sleep Architecture:</b> <span style="color: #f0e2a3;">{report.sleep_impact_years:+.1f} yrs</span></div>
-
 </div>
 </div>
 </div>
