@@ -18,6 +18,8 @@ from src.db.schema import (
     USER_PROFILE_TABLE_SCHEMA,
     DAILY_METRICS_TABLE_SCHEMA,
     DAILY_HEALTH_TABLE_SCHEMA,
+    SCHEDULED_WORKOUTS_TABLE_SCHEMA,
+    SCHEDULED_WORKOUTS_INDEXES,
 )
 
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "fitness_data.db")
@@ -47,6 +49,9 @@ class DatabaseManager:
             cursor.execute(USER_PROFILE_TABLE_SCHEMA)
             cursor.execute(DAILY_METRICS_TABLE_SCHEMA)
             cursor.execute(DAILY_HEALTH_TABLE_SCHEMA)
+            cursor.execute(SCHEDULED_WORKOUTS_TABLE_SCHEMA)
+            for idx_sql in SCHEDULED_WORKOUTS_INDEXES:
+                cursor.execute(idx_sql)
             conn.commit()
 
     def save_activity(self, activity: Activity) -> None:
@@ -474,3 +479,78 @@ class DatabaseManager:
             if not df.empty:
                 df["date"] = pd.to_datetime(df["date"]).dt.date
             return df
+
+    def save_scheduled_workouts(self, workouts: List[Dict[str, Any]]) -> int:
+        """Saves a batch of scheduled workouts into database."""
+        if not workouts:
+            return 0
+        sql = """
+        INSERT INTO scheduled_workouts (
+            plan_name, week_number, workout_date, day_name, workout_type,
+            title, description, target_distance_km, target_pace, is_completed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        params = [
+            (
+                w.get("plan_name", "Training Plan"),
+                w.get("week_number"),
+                w.get("workout_date"),
+                w.get("day_name", ""),
+                w.get("workout_type", "Scheduled Session"),
+                w.get("title", ""),
+                w.get("description", ""),
+                float(w.get("target_distance_km") or 0.0),
+                w.get("target_pace", ""),
+                int(w.get("is_completed", 0))
+            )
+            for w in workouts
+        ]
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany(sql, params)
+            conn.commit()
+            return len(params)
+
+    def clear_scheduled_workouts(self, plan_name: Optional[str] = None) -> None:
+        """Clears existing scheduled workouts."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if plan_name:
+                cursor.execute("DELETE FROM scheduled_workouts WHERE plan_name = ?", (plan_name,))
+            else:
+                cursor.execute("DELETE FROM scheduled_workouts")
+            conn.commit()
+
+    def get_scheduled_workouts(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Retrieves scheduled workouts as a DataFrame."""
+        query = "SELECT * FROM scheduled_workouts WHERE 1=1"
+        params: List[Any] = []
+        if start_date:
+            query += " AND workout_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND workout_date <= ?"
+            params.append(end_date)
+        query += " ORDER BY workout_date ASC"
+
+        with self.get_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
+            return df
+
+    def get_upcoming_workouts(self, from_date: Optional[str] = None, limit: int = 7) -> pd.DataFrame:
+        """Retrieves upcoming scheduled workouts from a given date onwards."""
+        from_str = from_date or date.today().isoformat()
+        query = """
+        SELECT * FROM scheduled_workouts 
+        WHERE workout_date >= ? 
+        ORDER BY workout_date ASC 
+        LIMIT ?
+        """
+        with self.get_connection() as conn:
+            df = pd.read_sql_query(query, conn, params=(from_str, limit))
+            return df
+

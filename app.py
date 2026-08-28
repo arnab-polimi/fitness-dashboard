@@ -39,6 +39,7 @@ from src.ui.views import (
     render_yoga_view,
     render_multisport_view,
     render_sleep_view,
+    render_training_plan_view,
 )
 
 # Apply sleek modern dark theme styling
@@ -367,6 +368,7 @@ with st.sidebar:
     if sport_focus == "Running":
         nav_options = [
             "Executive Overview",
+            "Training Plan",
             "Training Load & PMC",
             "Cardiovascular & Efficiency",
             "Sleep & Recovery Intelligence",
@@ -379,30 +381,35 @@ with st.sidebar:
     elif sport_focus == "Walking":
         nav_options = [
             "Walking Overview",
+            "Training Plan",
             "Data Import & Sync",
             "Athlete Settings",
         ]
     elif sport_focus == "Cycling":
         nav_options = [
             "Cycling Overview",
+            "Training Plan",
             "Data Import & Sync",
             "Athlete Settings",
         ]
     elif sport_focus == "Hiking":
         nav_options = [
             "Hiking Overview",
+            "Training Plan",
             "Data Import & Sync",
             "Athlete Settings",
         ]
     elif sport_focus == "Yoga & Mobility":
         nav_options = [
             "Yoga & Mobility Overview",
+            "Training Plan",
             "Data Import & Sync",
             "Athlete Settings",
         ]
     else:  # All Activities
         nav_options = [
             "Multi-Sport Overview",
+            "Training Plan",
             "Sleep & Recovery Intelligence",
             "Data Import & Sync",
             "Athlete Settings",
@@ -432,6 +439,9 @@ if nav_selection == "Executive Overview":
     render_overview_view(
         activities, daily_loads, user_profile, race_predictions, risk_report, daily_df, activities_df
     )
+elif nav_selection == "Training Plan":
+    render_training_plan_view(db)
+
 elif nav_selection == "Training Load & PMC":
     render_training_load_view(activities, daily_loads, user_profile, daily_df)
 elif nav_selection == "Cardiovascular & Efficiency":
@@ -457,4 +467,4 @@ elif nav_selection == "Multi-Sport Overview":
 elif nav_selection == "Data Import & Sync":
     render_import_view(db, user_profile, on_data_change)
 elif nav_selection == "Athlete Settings":
-    render_settings_view(db, user_profile, on_profile_change)
+    render_settings_view(db, user_profile, on_profile_change)

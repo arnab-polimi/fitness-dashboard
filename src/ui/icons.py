@@ -45,8 +45,11 @@ ICON_MAPPINGS: Dict[str, str] = {
     # Dashboard Features / Views
     "overview": "overview.png",
     "dashboard": "overview.png",
+    "plan": "plan.png",
+    "training_plan": "plan.png",
     "injury_risk": "injury_risk.png",
     "risk": "injury_risk.png",
+
     "race_predictor": "race_predictor.png",
     "race": "race_predictor.png",
     "insights": "insights.png",

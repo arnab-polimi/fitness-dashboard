@@ -103,3 +103,25 @@ CREATE TABLE IF NOT EXISTS daily_health (
     calories_total REAL
 );
 """
+
+SCHEDULED_WORKOUTS_TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS scheduled_workouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_name TEXT,
+    week_number INTEGER,
+    workout_date DATE NOT NULL,
+    day_name TEXT NOT NULL,
+    workout_type TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    target_distance_km REAL,
+    target_pace TEXT,
+    is_completed INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+SCHEDULED_WORKOUTS_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_scheduled_workouts_date ON scheduled_workouts(workout_date);",
+]
+
