@@ -154,6 +154,13 @@ class RunningMetricsCalculator:
     """Consolidated runner analytics calculator."""
 
     @staticmethod
+    def calculate_efficiency_factor(act: Activity) -> Optional[float]:
+        """Calculates efficiency factor for an activity."""
+        if act.speed_m_s > 0 and act.avg_hr:
+            return calculate_efficiency_factor(act.speed_m_s, act.avg_hr)
+        return None
+
+    @staticmethod
     def enrich_activities(activities: List[Activity], user_profile: UserProfile) -> List[Activity]:
         """Calculates advanced running metrics on each activity."""
         for act in activities:
