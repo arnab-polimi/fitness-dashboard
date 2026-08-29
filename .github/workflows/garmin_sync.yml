@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      workflows: write
 
     steps:
       - name: Checkout repository
@@ -41,8 +42,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin ${{ github.ref_name }}
-          git reset --soft origin/${{ github.ref_name }}
-          git checkout origin/${{ github.ref_name }} -- .
+          git reset --mixed origin/${{ github.ref_name }}
+          git checkout -- .
           git add fitness_data.db
           if git diff --staged --quiet; then
             echo "No new Garmin data to commit."
