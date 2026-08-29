@@ -41,9 +41,10 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          cp fitness_data.db /tmp/fitness_data.db
           git fetch origin ${{ github.ref_name }}
-          git reset --mixed origin/${{ github.ref_name }}
-          git checkout -- .
+          git reset --hard origin/${{ github.ref_name }}
+          cp /tmp/fitness_data.db fitness_data.db
           git add fitness_data.db
           if git diff --staged --quiet; then
             echo "No new Garmin data to commit."
