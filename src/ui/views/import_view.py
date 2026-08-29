@@ -2,6 +2,7 @@
 Data Ingestion, GarminDb Pipeline & CSV Import View.
 """
 import os
+import subprocess
 from typing import List, Callable
 import streamlit as st
 
@@ -23,9 +24,27 @@ def render_import_view(
 ) -> None:
     render_view_header(
         title="Data Ingestion & Sync Engine",
-        caption="Synchronize directly with your local **GarminDb** database or import activity CSV exports from Garmin Connect and Strava.",
+        caption="Synchronize directly with your GitHub Actions cloud sync, local **GarminDb** database, or import activity CSV exports.",
         icon_name="import",
     )
+
+    # 0. GitHub Actions Remote Sync Pull Section
+    render_section_header("GitHub Cloud Sync")
+    st.caption("Pull the latest telemetry and activities synchronized automatically by GitHub Actions into your local dashboard.")
+
+    col_gh1, col_gh2 = st.columns([2, 3])
+    with col_gh1:
+        if st.button("☁️ Pull Latest from GitHub Cloud", type="primary"):
+            with st.spinner("Pulling latest fitness_data.db from GitHub repository..."):
+                try:
+                    res = subprocess.run(["git", "pull", "--rebase"], capture_output=True, text=True, check=True)
+                    st.success("Successfully pulled latest synced data from GitHub!")
+                    st.caption(res.stdout or "Repository up-to-date.")
+                    on_data_updated()
+                except Exception as e:
+                    st.error(f"Failed to pull from GitHub: {e}")
+
+    st.divider()
 
     # 1. GarminDb Download + Direct Pipeline Sync Section
     render_section_header("GarminDb Direct Pipeline")
