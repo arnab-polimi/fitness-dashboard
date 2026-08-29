@@ -197,10 +197,6 @@ class DatabaseManager:
             conn.commit()
             return len(rows)
 
-    def save_activities(self, activities: List[Activity]) -> int:
-        """Saves or bulk updates multiple activities."""
-        return self.bulk_save_activities(activities)
-
     def get_activity(self, activity_id: str) -> Optional[Activity]:
         """Fetches single activity by ID."""
         with self.get_connection() as conn:
