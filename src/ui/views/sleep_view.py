@@ -55,41 +55,56 @@ def render_sleep_view(
     rhrs = df["resting_hr"].dropna() if "resting_hr" in df.columns else pd.Series()
     avg_rhr = np.mean(rhrs) if not rhrs.empty else 0.0
 
-    # 7-day rolling sleep debt vs 8h target
-    last_7d = total_dur_hrs.tail(7)
-    weekly_debt_hrs = sum(last_7d - 8.0) if not last_7d.empty else 0.0
+    # 7-day rolling metrics & latest night telemetry
+    latest_row = df.iloc[-1]
+    latest_dur_hrs = (latest_row["sleep_duration_seconds"] / 3600.0) if pd.notna(latest_row.get("sleep_duration_seconds")) else 0.0
+    latest_score = latest_row.get("sleep_score")
+    latest_rhr = latest_row.get("resting_hr")
+    latest_deep_hrs = (latest_row["deep_sleep_seconds"] / 3600.0) if pd.notna(latest_row.get("deep_sleep_seconds")) else 0.0
+    latest_rem_hrs = (latest_row["rem_sleep_seconds"] / 3600.0) if pd.notna(latest_row.get("rem_sleep_seconds")) else 0.0
+    latest_date_str = pd.to_datetime(latest_row["date"]).strftime("%b %d")
+
+    last_7d_dur = total_dur_hrs.tail(7)
+    avg_7d_dur = np.mean(last_7d_dur) if not last_7d_dur.empty else avg_sleep_hrs
+    last_7d_scores = scores.tail(7)
+    avg_7d_score = np.mean(last_7d_scores) if not last_7d_scores.empty else avg_score
+    last_7d_rhr = rhrs.tail(7)
+    avg_7d_rhr = np.mean(last_7d_rhr) if not last_7d_rhr.empty else avg_rhr
+
+    weekly_debt_hrs = sum(last_7d_dur - 8.0) if not last_7d_dur.empty else 0.0
 
     # 1. Top KPI Grid
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         render_metric_card(
-            label="Avg Sleep Duration",
-            value=f"{avg_sleep_hrs:.1f} hrs",
-            subtext="Target: 8.0 hrs / night",
-            delta=f"Deep: {avg_deep_hrs:.1f}h | REM: {avg_rem_hrs:.1f}h",
-            delta_type="pos" if avg_sleep_hrs >= 7.5 else "neg",
+            label=f"Latest Sleep ({latest_date_str})",
+            value=f"{latest_dur_hrs:.1f} hrs",
+            subtext=f"7-Day Avg: {avg_7d_dur:.1f} hrs / night",
+            delta=f"Deep: {latest_deep_hrs:.1f}h | REM: {latest_rem_hrs:.1f}h",
+            delta_type="pos" if latest_dur_hrs >= 7.0 else "neg",
         )
     with c2:
         render_metric_card(
-            label="Sleep Quality Score",
-            value=f"{avg_score:.0f} / 100",
-            subtext="Garmin Sleep Index",
-            delta="Optimal Recovery" if avg_score >= 80 else "Needs Rest",
-            delta_type="pos" if avg_score >= 78 else "neg",
+            label="Latest Sleep Score",
+            value=f"{latest_score:.0f} / 100" if pd.notna(latest_score) else "--",
+            subtext=f"7-Day Avg: {avg_7d_score:.0f} / 100",
+            delta="Optimal Recovery" if (latest_score or 0) >= 80 else ("Fair Quality" if (latest_score or 0) >= 70 else "Needs Rest"),
+            delta_type="pos" if (latest_score or 0) >= 75 else "neg",
         )
     with c3:
+        rhr_delta_str = f"{latest_rhr - avg_7d_rhr:+.0f} bpm vs 7d avg" if (pd.notna(latest_rhr) and pd.notna(avg_7d_rhr)) else "Baseline"
         render_metric_card(
             label="Resting Heart Rate",
-            value=f"{avg_rhr:.0f} bpm" if avg_rhr > 0 else "--",
-            subtext="Nightly Baseline",
-            delta="Cardiovascular Recovery",
-            delta_type="pos",
+            value=f"{latest_rhr:.0f} bpm" if pd.notna(latest_rhr) else "--",
+            subtext=f"7-Day Baseline: {avg_7d_rhr:.0f} bpm",
+            delta=rhr_delta_str,
+            delta_type="pos" if (pd.notna(latest_rhr) and latest_rhr <= avg_7d_rhr) else "neg",
         )
     with c4:
         render_metric_card(
             label="7-Day Sleep Debt",
             value=f"{weekly_debt_hrs:+.1f} hrs",
-            subtext="Cumulative vs 8h/night",
+            subtext="Cumulative vs 8h/night (7d)",
             delta="Surplus Rest" if weekly_debt_hrs >= 0 else "Sleep Deficit",
             delta_type="pos" if weekly_debt_hrs >= -2.0 else "neg",
         )
