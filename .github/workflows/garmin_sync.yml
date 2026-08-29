@@ -43,5 +43,6 @@ jobs:
             echo "No new Garmin data to commit."
           else
             git commit -m "Auto-sync: update Garmin activities and health telemetry [skip ci]"
-            git push origin master
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin ${{ github.ref_name }}
           fi
