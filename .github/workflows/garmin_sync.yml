@@ -40,11 +40,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin ${{ github.ref_name }}
+          git reset --soft origin/${{ github.ref_name }}
           git add fitness_data.db
           if git diff --staged --quiet; then
             echo "No new Garmin data to commit."
           else
             git commit -m "Auto-sync: update Garmin activities and health telemetry [skip ci]"
-            git pull --rebase origin ${{ github.ref_name }}
-            git push origin ${{ github.ref_name }}
+            git push origin HEAD:${{ github.ref_name }}
           fi
