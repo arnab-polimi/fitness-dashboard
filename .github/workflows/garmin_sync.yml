@@ -42,6 +42,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin ${{ github.ref_name }}
           git reset --soft origin/${{ github.ref_name }}
+          git checkout origin/${{ github.ref_name }} -- .
           git add fitness_data.db
           if git diff --staged --quiet; then
             echo "No new Garmin data to commit."

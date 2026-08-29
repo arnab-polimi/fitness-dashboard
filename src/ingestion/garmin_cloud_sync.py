@@ -1,4 +1,4 @@
-﻿"""
+"""
 Automated Garmin Connect Cloud Synchronizer.
 Runs in GitHub Actions (or standalone CLI) to fetch latest activities,
 sleep telemetry, and daily metrics directly from Garmin Connect API without local PC.
@@ -124,11 +124,13 @@ class GarminCloudSync:
                 parsed_acts.append(act)
 
             if parsed_acts:
-                db.save_activities(parsed_acts)
+                db.bulk_save_activities(parsed_acts)
                 synced_activities = len(parsed_acts)
                 print(f"Saved {synced_activities} activities to database.")
         except Exception as e:
             print(f"Error fetching activities: {e}")
+            import traceback
+            traceback.print_exc()
 
         # 2. Fetch & Parse Daily Health & Sleep Telemetry
         print(f"Fetching daily health and sleep data...")
