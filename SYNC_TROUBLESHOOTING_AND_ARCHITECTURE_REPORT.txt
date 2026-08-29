@@ -1,0 +1,139 @@
+﻿================================================================================
+BIOSTRATA CLOUD PIPELINE - POST-MORTEM & TECHNICAL WORKFLOW REPORT
+================================================================================
+Date: August 29, 2026
+Component: GitHub Actions Garmin Cloud Synchronizer & Streamlit Hosting Pipeline
+Status: RESOLVED & VERIFIED
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+This report documents the sequence of issues encountered during the migration
+of the Garmin Connect Cloud Synchronization schedule to 10:00 AM, 12:00 PM, and 
+10:00 PM CEST, the breakdown of why data updates appeared stale on Streamlit 
+Community Cloud, the root causes identified across the software stack, and the 
+permanent architectural fixes implemented.
+
+--------------------------------------------------------------------------------
+2. THE DETAILED PROBLEM WORKFLOW & ROOT CAUSES
+--------------------------------------------------------------------------------
+
+Issue #1: Missing Database Insertion Method in Python Layer
+--------------------------------------------------------------------------------
+- SYMPTOM: 
+  Daily health (sleep, steps, resting HR) was updating, but newly completed runs 
+  (activities) never appeared in the SQLite database (total distance remained stuck 
+  at 408.1 km).
+- ROOT CAUSE:
+  In src/ingestion/garmin_cloud_sync.py, the activity ingestion step attempted to call:
+      db.save_activities(parsed_acts)
+  However, DatabaseManager only implemented bulk_save_activities() and save_activity(). 
+  This raised a silent AttributeError: 'DatabaseManager' object has no attribute 'save_activities' 
+  inside a broad try...except block, preventing all downloaded activities from being 
+  persisted to fitness_data.db.
+- FIX IMPLEMENTED:
+  1. Added save_activities(self, activities) method alias in src/db/database.py.
+  2. Updated src/ingestion/garmin_cloud_sync.py to directly invoke bulk_save_activities().
+  3. Added explicit traceback logging on any activity parsing exceptions.
+
+Issue #2: Streamlit Community Cloud Webhook Ignored Commits ([skip ci])
+--------------------------------------------------------------------------------
+- SYMPTOM:
+  Streamlit Cloud continued displaying older database records even after a sync job 
+  committed to GitHub.
+- ROOT CAUSE:
+  The workflow was committing with the message:
+      "Auto-sync: update Garmin activities and health telemetry [skip ci]"
+  Streamlit Community Cloud's deployment webhook checks GitHub push payloads for [skip ci]. 
+  When present, Streamlit Cloud skips pulling repository changes, keeping the running 
+  container on the previous container image and SQLite snapshot.
+- FIX IMPLEMENTED:
+  Removed [skip ci] from the commit message in .github/workflows/garmin_sync.yml so 
+  Streamlit Cloud receives standard push events and triggers container reloads.
+
+Issue #3: GitHub Actions Bot Write Permission Block (403 / Remote Rejected)
+--------------------------------------------------------------------------------
+- SYMPTOM:
+  GitHub Actions workflow failed during git push with:
+      ! [remote rejected] HEAD -> master (refusing to allow a GitHub App to create 
+      or update workflow without permissions)
+- ROOT CAUSE:
+  1. GitHub Repository Settings: The repository default for GitHub Actions was set to 
+     "Read repository contents and packages permissions", blocking all bot write access.
+  2. Staging Dirty Trees: Previous git reset logic (git reset --soft) kept unstaged 
+     differences in .github/workflows/garmin_sync.yml. Because the bot attempted to 
+     commit a workflow file, GitHub's security policies rejected the push.
+- FIX IMPLEMENTED:
+  1. User toggled repository setting to "Read and write permissions" under Settings > Actions.
+  2. Hard-isolated the database commit step in garmin_sync.yml:
+     - Copies fitness_data.db to /tmp/fitness_data.db
+     - Runs git fetch origin ${{ github.ref_name }} & git reset --hard origin/${{ github.ref_name }}
+     - Restores /tmp/fitness_data.db and stages strictly fitness_data.db
+     - Guarantees exactly 1 binary file is committed and pushed, eliminating any chance 
+       of dirty code or workflow files entering the commit.
+
+Issue #4: Detached HEAD & Branch Mismatch in CI Runner
+--------------------------------------------------------------------------------
+- SYMPTOM:
+  ! [rejected] master -> master (fetch first)
+- ROOT CAUSE:
+  actions/checkout checks out commits in detached HEAD mode. Running git push origin master 
+  attempted to push a local master branch pointer rather than the newly committed HEAD. 
+  Additionally, parallel runs caused non-fast-forward divergence.
+- FIX IMPLEMENTED:
+  Updated the push command to dynamically target HEAD:${{ github.ref_name }} with 
+  full fetch-depth (fetch-depth: 0).
+
+Issue #5: Sleep View UI Lifetime Averaging vs. Last Night's Telemetry
+--------------------------------------------------------------------------------
+- SYMPTOM:
+  Sleep score, duration, and RHR appeared not to update after morning syncs.
+- ROOT CAUSE:
+  In src/ui/views/sleep_view.py, the top 4 KPI cards were computing np.mean() across 
+  the entire 110-day dataset. Adding a single day of new sleep data only moved the 
+  lifetime average by ~0.01, giving the visual impression of stale data.
+- FIX IMPLEMENTED:
+  Refactored sleep_view.py so the top KPI cards prominently display Last Night's 
+  Sleep (Duration, Sleep Score, Resting HR) with 7-day rolling baselines as delta context.
+
+--------------------------------------------------------------------------------
+3. FINAL ARCHITECTURAL WORKFLOW (HOW IT WORKS NOW)
+--------------------------------------------------------------------------------
+
++-------------------------+
+|   Garmin Connect API    |
++------------+------------+
+             |
+             | 1. Scheduled Cloud Fetch (10:00, 12:00, 22:00 CEST)
+             v
++-------------------------+
+| GitHub Actions Runner   |
+| (garmin_cloud_sync.py)  |
++------------+------------+
+             |
+             | 2. Bulk inserts activities & health telemetry
+             | 3. Computes TRIMP, TSS, CTL, ATL, TSB
+             | 4. Backs up DB to /tmp, resets workspace to remote HEAD
+             | 5. Stages ONLY fitness_data.db & pushes to master
+             v
++-------------------------+
+| GitHub Repository       |
+| (origin/master)         |
++------------+------------+
+             |
+             | 6. Webhook triggers automatic live reload
+             v
++-------------------------+
+| Streamlit Cloud App     |
+| (Live & Up-To-Date)     |
++-------------------------+
+
+--------------------------------------------------------------------------------
+4. VERIFICATION
+--------------------------------------------------------------------------------
+- Latest Activity: 'Turin Running' (Aug 29, 08:25 CEST, 6.73 km, Avg HR 157 bpm)
+- Total Activities: 71
+- Total Mileage: 414.8 km (Updated from 408.1 km)
+- Today's Sleep: 6.2 hrs (Score: 78, RHR: 59 bpm)
+- CI Status: Passing (Clean single-file commit 1e1a73c pushed by bot)
+================================================================================
