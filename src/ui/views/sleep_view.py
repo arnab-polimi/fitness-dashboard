@@ -2,6 +2,7 @@
 Sleep & Circadian Recovery Telemetry View.
 """
 from typing import Optional
+import textwrap
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -246,7 +247,7 @@ def render_sleep_view(
     # 6. Circadian Recovery & Sports Science Insights Callout
     render_section_header("Circadian Recovery & Sports Science Insights", icon_name="sleep")
     sleep_icon = get_icon_html("sleep", size=20, margin_right=8)
-    st.markdown(f"""
+    callout_html = textwrap.dedent(f"""
     <div style="background: linear-gradient(135deg, #1c1716 0%, #26201e 100%); border: 1px solid #3b322e; border-left: 4px solid #c1d37f; border-radius: 12px; padding: 18px 22px; margin-bottom: 24px;">
         <div style="font-size: 0.95rem; font-weight: 700; color: #f0e2a3; margin-bottom: 8px; display: flex; align-items: center;">
             {sleep_icon}<span>Physiological Sleep Stages, Circadian Stability & Athletic Performance</span>
@@ -258,7 +259,11 @@ def render_sleep_view(
             • <strong>Resting HR ({avg_rhr:.0f} bpm avg):</strong> Your primary autonomic nervous system indicator. An elevated RHR (+3–5 bpm above baseline) indicates incomplete recovery, systemic inflammation, or impending illness.
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """).strip()
+    if hasattr(st, "html"):
+        st.html(callout_html)
+    else:
+        st.markdown(callout_html, unsafe_allow_html=True)
 
     # 7. Enhanced Sleep History Log Table
     render_section_header("Daily Sleep Log History", icon_name="sleep")

@@ -1,6 +1,7 @@
 """
 Reusable Streamlit UI component renderers with dark modern styling.
 """
+import textwrap
 from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 import streamlit as st
@@ -614,4 +615,8 @@ def render_sleep_ui_card(
         </div>
     </div>
     """
-    st.markdown(card_html, unsafe_allow_html=True)
+    cleaned_card_html = textwrap.dedent(card_html).strip()
+    if hasattr(st, "html"):
+        st.html(cleaned_card_html)
+    else:
+        st.markdown(cleaned_card_html, unsafe_allow_html=True)
