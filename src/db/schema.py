@@ -100,7 +100,9 @@ CREATE TABLE IF NOT EXISTS daily_health (
     rem_sleep_seconds REAL,
     sleep_score REAL,
     weight_kg REAL,
-    calories_total REAL
+    calories_total REAL,
+    sleep_start TEXT,
+    sleep_end TEXT
 );
 """
 

@@ -1005,7 +1005,10 @@ def plot_weekly_multisport_stacked(activities_df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def plot_sleep_stage_breakdown_chart(health_df: pd.DataFrame) -> go.Figure:
+def plot_sleep_stage_breakdown_chart(
+    health_df: pd.DataFrame,
+    title: Optional[str] = None,
+) -> go.Figure:
     """
     Stacked Bar Chart of Deep, REM, and Light Sleep Stages (in hours) over time using Palette colors.
     """
@@ -1075,8 +1078,9 @@ def plot_sleep_stage_breakdown_chart(health_df: pd.DataFrame) -> go.Figure:
     )
 
     layout = dict(PLOT_LAYOUT_DARK)
+    chart_title = title or "<b>Daily Sleep Architecture & Stage Distribution (Hours)</b>"
     layout.update(
-        title="<b>Daily Sleep Architecture & Stage Distribution (Hours)</b>",
+        title=chart_title,
         barmode="stack",
         height=420,
         margin=dict(l=28, r=15, t=65, b=35),
@@ -1089,6 +1093,196 @@ def plot_sleep_stage_breakdown_chart(health_df: pd.DataFrame) -> go.Figure:
             x=0.5,
             font=dict(size=9.5),
             traceorder="normal",
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+def plot_sleep_schedule_and_timing_chart(
+    health_df: pd.DataFrame,
+    title: Optional[str] = None,
+) -> go.Figure:
+    """
+    Subplot trend chart comparing Bedtime (Sleep Onset) and Wake-Up Time over time,
+    with nightly points, 7-day rolling trends, and reference baseline guidelines.
+    """
+    if health_df.empty or "sleep_duration_seconds" not in health_df.columns:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Sleep Telemetry Available")
+        return fig
+
+    from src.analytics.sleep_score import CircadianTimingCalculator
+    df = CircadianTimingCalculator.calculate_timing_dataframe(health_df)
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Sleep Telemetry Available")
+        return fig
+
+    df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.12,
+        subplot_titles=(
+            "<b>Bedtime / Sleep Onset Trend</b>",
+            "<b>Wake-Up Time Trend</b>",
+        ),
+    )
+
+    # 1. Nightly Bedtime Points
+    fig.add_trace(
+        go.Scatter(
+            x=df["date_str"],
+            y=df["bed_decimal"],
+            name="Nightly Bedtime",
+            mode="lines+markers",
+            marker=dict(
+                size=6.5,
+                color="#A5B4FC",
+                line=dict(width=1, color="#1e1b4b"),
+            ),
+            line=dict(color="rgba(165, 180, 252, 0.35)", width=1.2, dash="dot"),
+            text=df["bed_str"],
+            customdata=df["bed_roll_str"],
+            hovertemplate="<b>%{x}</b><br>Bedtime: <b>%{text}</b><br>7-Day Avg: <b>%{customdata}</b><extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # 2. 7-Day Rolling Bedtime Trend
+    fig.add_trace(
+        go.Scatter(
+            x=df["date_str"],
+            y=df["bed_roll_7d"],
+            name="7-Day Avg Bedtime",
+            mode="lines",
+            line=dict(color="#818CF8", width=2.6, shape="spline", smoothing=0.6),
+            text=df["bed_roll_str"],
+            hovertemplate="<b>%{x}</b><br>7-Day Avg Bedtime: <b>%{text}</b><extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # 3. Daily Wake Time Points
+    fig.add_trace(
+        go.Scatter(
+            x=df["date_str"],
+            y=df["wake_decimal"],
+            name="Daily Wake Time",
+            mode="lines+markers",
+            marker=dict(
+                size=6.5,
+                color="#FDE047",
+                line=dict(width=1, color="#78350F"),
+            ),
+            line=dict(color="rgba(253, 224, 71, 0.35)", width=1.2, dash="dot"),
+            text=df["wake_str"],
+            customdata=df["wake_roll_str"],
+            hovertemplate="<b>%{x}</b><br>Wake Time: <b>%{text}</b><br>7-Day Avg: <b>%{customdata}</b><extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
+
+    # 4. 7-Day Rolling Wake Time Trend
+    fig.add_trace(
+        go.Scatter(
+            x=df["date_str"],
+            y=df["wake_roll_7d"],
+            name="7-Day Avg Wake Time",
+            mode="lines",
+            line=dict(color="#F59E0B", width=2.6, shape="spline", smoothing=0.6),
+            text=df["wake_roll_str"],
+            hovertemplate="<b>%{x}</b><br>7-Day Avg Wake Time: <b>%{text}</b><extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
+
+    # Median / Baseline guidelines
+    med_bed = float(df["bed_decimal"].median())
+    med_wake = float(df["wake_decimal"].median())
+    med_bed_str = CircadianTimingCalculator.format_clock_time(med_bed, is_bedtime=True)
+    med_wake_str = CircadianTimingCalculator.format_clock_time(med_wake, is_bedtime=False)
+
+    # Subplot 1 Bedtime Y-axis formatting
+    min_b = float(df["bed_decimal"].min())
+    max_b = float(df["bed_decimal"].max())
+    b_start = int(np.floor(min_b - 0.4))
+    b_end = int(np.ceil(max_b + 0.4))
+    b_ticks = list(range(b_start, b_end + 1))
+    b_tick_labels = [CircadianTimingCalculator.format_clock_time(float(t), is_bedtime=True) for t in b_ticks]
+
+    fig.update_yaxes(
+        tickmode="array",
+        tickvals=b_ticks,
+        ticktext=b_tick_labels,
+        range=[b_start - 0.2, b_end + 0.2],
+        title_text="Bedtime",
+        row=1,
+        col=1,
+    )
+
+    # Subplot 2 Wake-Up Y-axis formatting
+    min_w = float(df["wake_decimal"].min())
+    max_w = float(df["wake_decimal"].max())
+    w_start = int(np.floor(min_w - 0.4))
+    w_end = int(np.ceil(max_w + 0.4))
+    w_ticks = list(range(w_start, w_end + 1))
+    w_tick_labels = [CircadianTimingCalculator.format_clock_time(float(t), is_bedtime=False) for t in w_ticks]
+
+    fig.update_yaxes(
+        tickmode="array",
+        tickvals=w_ticks,
+        ticktext=w_tick_labels,
+        range=[w_start - 0.2, w_end + 0.2],
+        title_text="Wake Time",
+        row=2,
+        col=1,
+    )
+
+    # Median annotations or horizontal lines
+    fig.add_hline(
+        y=med_bed,
+        line_dash="dash",
+        line_color="#c8b99c",
+        line_width=1.2,
+        annotation_text=f"Median ({med_bed_str})",
+        annotation_position="top left",
+        annotation_font=dict(size=9.5, color="#c8b99c"),
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=med_wake,
+        line_dash="dash",
+        line_color="#c8b99c",
+        line_width=1.2,
+        annotation_text=f"Median ({med_wake_str})",
+        annotation_position="top left",
+        annotation_font=dict(size=9.5, color="#c8b99c"),
+        row=2,
+        col=1,
+    )
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    chart_title = title or "<b>Daily Sleep & Wake Timing Trends (Circadian Schedule)</b>"
+    layout.update(
+        title=chart_title,
+        height=480,
+        margin=dict(l=35, r=20, t=65, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
         ),
     )
     fig.update_layout(layout)

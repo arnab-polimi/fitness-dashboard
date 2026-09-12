@@ -1,4 +1,4 @@
-﻿"""
+"""
 Sleep Score Calculation Engine based on Resting Heart Rate (RHR) and Sleep Architecture.
 Calibrated to physiological recovery standards (Firstbeat / Garmin / Oura / NSF models).
 """
@@ -177,3 +177,161 @@ class SleepScoreCalculator:
         df = pd.DataFrame(records)
         updated_df = cls.calculate_dataframe(df, overwrite_existing=overwrite_existing)
         return updated_df.to_dict(orient="records")
+
+
+class CircadianTimingCalculator:
+    """
+    Computes sleep schedule telemetry, bedtime/wake-up trends,
+    rolling circadian stability, and schedule regularity metrics.
+    """
+
+    @classmethod
+    def format_clock_time(
+        cls,
+        decimal_hour: Optional[float],
+        is_bedtime: bool = False,
+        include_24h: bool = False,
+    ) -> str:
+        """
+        Formats a continuous decimal hour (e.g. 23.5 or 24.5) to a clean human-readable clock string.
+        """
+        if decimal_hour is None or pd.isna(decimal_hour):
+            return "--"
+
+        rem = decimal_hour - 24.0 if (is_bedtime and decimal_hour >= 24.0) else decimal_hour
+        clock_h = int(rem)
+        clock_m = int(round((rem % 1.0) * 60))
+        if clock_m == 60:
+            clock_m = 0
+            clock_h = (clock_h + 1) % 24
+
+        period = "AM" if clock_h < 12 else "PM"
+        disp_h = clock_h if 1 <= clock_h <= 12 else (clock_h - 12 if clock_h > 12 else 12)
+
+        if include_24h:
+            return f"{disp_h}:{clock_m:02d} {period} ({clock_h:02d}:{clock_m:02d})"
+        return f"{disp_h}:{clock_m:02d} {period}"
+
+    @classmethod
+    def calculate_timing_dataframe(cls, health_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extracts and normalizes bedtime and wake-up times into continuous decimal hours,
+        7-day rolling averages, and clean display strings.
+        """
+        if health_df.empty or "sleep_duration_seconds" not in health_df.columns:
+            return pd.DataFrame()
+
+        df = health_df[health_df["sleep_duration_seconds"].notna() & (health_df["sleep_duration_seconds"] > 0)].copy()
+        if df.empty:
+            return df
+
+        df["date_dt"] = pd.to_datetime(df["date"])
+        df = df.sort_values("date_dt", ascending=True).reset_index(drop=True)
+
+        has_start = "sleep_start" in df.columns and df["sleep_start"].notna().any()
+        has_end = "sleep_end" in df.columns and df["sleep_end"].notna().any()
+
+        bed_decs = []
+        wake_decs = []
+
+        for _, r in df.iterrows():
+            dur_sec = float(r["sleep_duration_seconds"])
+            dur_hrs = dur_sec / 3600.0
+
+            parsed = False
+            if has_start and has_end and pd.notna(r.get("sleep_start")) and pd.notna(r.get("sleep_end")):
+                try:
+                    s_dt = pd.to_datetime(r["sleep_start"])
+                    e_dt = pd.to_datetime(r["sleep_end"])
+                    sh = s_dt.hour
+                    sm = s_dt.minute
+                    bed_dec = (sh + sm / 60.0) if sh >= 12 else (sh + 24.0 + sm / 60.0)
+                    wake_dec = e_dt.hour + e_dt.minute / 60.0
+                    parsed = True
+                except Exception:
+                    parsed = False
+
+            if not parsed:
+                # Deterministic baseline estimation if timestamps were not supplied
+                d_val = pd.to_datetime(r["date"]).date()
+                is_weekend = d_val.weekday() >= 5
+                wake_dec = 7.5 if is_weekend else 7.1
+                bed_raw = wake_dec - (dur_hrs + 0.4)
+                bed_dec = (bed_raw + 24.0) if bed_raw < 12.0 else bed_raw
+
+            bed_decs.append(round(bed_dec, 3))
+            wake_decs.append(round(wake_dec, 3))
+
+        df["bed_decimal"] = bed_decs
+        df["wake_decimal"] = wake_decs
+
+        df["bed_str"] = [cls.format_clock_time(h, is_bedtime=True, include_24h=True) for h in bed_decs]
+        df["wake_str"] = [cls.format_clock_time(h, is_bedtime=False, include_24h=True) for h in wake_decs]
+
+        df["bed_roll_7d"] = df["bed_decimal"].rolling(window=7, min_periods=1).mean()
+        df["wake_roll_7d"] = df["wake_decimal"].rolling(window=7, min_periods=1).mean()
+
+        df["bed_roll_str"] = [cls.format_clock_time(h, is_bedtime=True) for h in df["bed_roll_7d"]]
+        df["wake_roll_str"] = [cls.format_clock_time(h, is_bedtime=False) for h in df["wake_roll_7d"]]
+
+        return df
+
+    @classmethod
+    def calculate_circadian_metrics(cls, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Calculates summary circadian regularity KPIs over the given dataset.
+        """
+        if df.empty:
+            return {
+                "avg_bedtime_str": "--",
+                "avg_wake_str": "--",
+                "bed_variability_min": 0.0,
+                "wake_variability_min": 0.0,
+                "midpoint_str": "--",
+                "regularity_score": 0.0,
+                "consistency_label": "No Data",
+            }
+
+        if "bed_decimal" not in df.columns:
+            df = cls.calculate_timing_dataframe(df)
+
+        mean_bed = float(df["bed_decimal"].mean())
+        mean_wake = float(df["wake_decimal"].mean())
+
+        std_bed_min = float(df["bed_decimal"].std() * 60.0) if len(df) > 1 else 0.0
+        std_wake_min = float(df["wake_decimal"].std() * 60.0) if len(df) > 1 else 0.0
+
+        if pd.isna(std_bed_min):
+            std_bed_min = 0.0
+        if pd.isna(std_wake_min):
+            std_wake_min = 0.0
+
+        # Bedtime referenced to midnight of sleep onset
+        bed_ref_midnight = mean_bed - 24.0 if mean_bed >= 12.0 else mean_bed
+        mid_dec = (bed_ref_midnight + mean_wake) / 2.0
+        if mid_dec < 0:
+            mid_dec += 24.0
+        elif mid_dec >= 24.0:
+            mid_dec -= 24.0
+
+        avg_std = (std_bed_min + std_wake_min) / 2.0
+        regularity_score = max(40.0, min(99.0, 100.0 - (avg_std * 0.75)))
+
+        if avg_std <= 25.0:
+            consistency_label = "Optimal Circadian Sync"
+        elif avg_std <= 50.0:
+            consistency_label = "Good Regularity"
+        else:
+            consistency_label = "Variable Schedule"
+
+        return {
+            "avg_bedtime_str": cls.format_clock_time(mean_bed, is_bedtime=True),
+            "avg_wake_str": cls.format_clock_time(mean_wake, is_bedtime=False),
+            "bed_variability_min": round(std_bed_min, 0),
+            "wake_variability_min": round(std_wake_min, 0),
+            "midpoint_str": cls.format_clock_time(mid_dec, is_bedtime=False),
+            "regularity_score": round(regularity_score, 0),
+            "consistency_label": consistency_label,
+            "mean_bed_dec": mean_bed,
+            "mean_wake_dec": mean_wake,
+        }

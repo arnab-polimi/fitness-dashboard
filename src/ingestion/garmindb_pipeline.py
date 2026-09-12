@@ -325,7 +325,12 @@ class GarminDbPipeline:
                 records_by_date[d]["resting_hr"] = r["resting_heart_rate"]
 
             # 2. Sleep
-            cur.execute("SELECT day, total_sleep, deep_sleep, light_sleep, rem_sleep, score FROM sleep ORDER BY day ASC")
+            cur.execute("PRAGMA table_info(sleep)")
+            sleep_cols = {col["name"] for col in cur.fetchall()}
+            start_sel = "start" if "start" in sleep_cols else "NULL as start"
+            stop_sel = "stop" if "stop" in sleep_cols else "NULL as stop"
+
+            cur.execute(f"SELECT day, total_sleep, deep_sleep, light_sleep, rem_sleep, score, {start_sel}, {stop_sel} FROM sleep ORDER BY day ASC")
             for r in cur.fetchall():
                 d = parse_datetime(r["day"]).date()
                 if d not in records_by_date:
@@ -335,6 +340,10 @@ class GarminDbPipeline:
                 records_by_date[d]["light_sleep_seconds"] = parse_duration_to_seconds(r["light_sleep"])
                 records_by_date[d]["rem_sleep_seconds"] = parse_duration_to_seconds(r["rem_sleep"])
                 records_by_date[d]["sleep_score"] = float(r["score"]) if r["score"] is not None else None
+                if r["start"] is not None:
+                    records_by_date[d]["sleep_start"] = str(r["start"])
+                if r["stop"] is not None:
+                    records_by_date[d]["sleep_end"] = str(r["stop"])
 
             # 3. Daily Summary (HR min/max, stress, steps, calories)
             cur.execute("SELECT day, hr_min, hr_max, rhr, stress_avg, steps, calories_total FROM daily_summary ORDER BY day ASC")

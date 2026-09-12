@@ -7,9 +7,11 @@ import pandas as pd
 import numpy as np
 
 from src.models.user_profile import UserProfile
+from src.analytics.sleep_score import CircadianTimingCalculator
 from src.ui.components import render_metric_card
 from src.ui.charts import (
     plot_sleep_stage_breakdown_chart,
+    plot_sleep_schedule_and_timing_chart,
     plot_sleep_score_and_rhr_chart,
 )
 from src.ui.icons import render_view_header, render_section_header, get_icon_html
@@ -22,7 +24,7 @@ def render_sleep_view(
     """Renders Sleep Architecture & Circadian Recovery View."""
     render_view_header(
         title="Sleep & Circadian Recovery Intelligence",
-        caption="Analyze sleep architecture (Deep, REM, Light stages), sleep score trends, resting heart rate recovery, and sleep debt.",
+        caption="Analyze sleep architecture (Deep, REM, Light stages), bedtime/wake-up timing trends, recovery scores, and sleep debt.",
         icon_name="sleep",
     )
 
@@ -37,9 +39,55 @@ def render_sleep_view(
         return
 
     df["date_dt"] = pd.to_datetime(df["date"])
-    df = df.sort_values("date_dt", ascending=True)
+    df = df.sort_values("date_dt", ascending=True).reset_index(drop=True)
 
-    # Calculate Summary Metrics
+    # 1. Timeframe Filter Selector (Default to Last 30 Days / Last Month)
+    t_col1, t_col2 = st.columns([3, 4])
+    with t_col1:
+        timeframe = st.segmented_control(
+            "Timeframe",
+            options=[
+                "Last 30 Days (Last Month)",
+                "Last 7 Days (1 Week)",
+                "Last 14 Days (2 Weeks)",
+                "Last 60 Days (2 Months)",
+                "Last 90 Days (3 Months)",
+                "All Available History",
+            ],
+            default="Last 30 Days (Last Month)",
+            key="sleep_view_timeframe",
+        ) if hasattr(st, "segmented_control") else st.selectbox(
+            "Timeframe",
+            [
+                "Last 30 Days (Last Month)",
+                "Last 7 Days (1 Week)",
+                "Last 14 Days (2 Weeks)",
+                "Last 60 Days (2 Months)",
+                "Last 90 Days (3 Months)",
+                "All Available History",
+            ],
+            index=0,
+            key="sleep_view_timeframe",
+        )
+
+    max_dt = df["date_dt"].max()
+    if timeframe == "Last 7 Days (1 Week)":
+        filtered_df = df[df["date_dt"] >= (max_dt - pd.Timedelta(days=7))].copy()
+    elif timeframe == "Last 14 Days (2 Weeks)":
+        filtered_df = df[df["date_dt"] >= (max_dt - pd.Timedelta(days=14))].copy()
+    elif timeframe == "Last 30 Days (Last Month)":
+        filtered_df = df[df["date_dt"] >= (max_dt - pd.Timedelta(days=30))].copy()
+    elif timeframe == "Last 60 Days (2 Months)":
+        filtered_df = df[df["date_dt"] >= (max_dt - pd.Timedelta(days=60))].copy()
+    elif timeframe == "Last 90 Days (3 Months)":
+        filtered_df = df[df["date_dt"] >= (max_dt - pd.Timedelta(days=90))].copy()
+    else:
+        filtered_df = df.copy()
+
+    if filtered_df.empty:
+        filtered_df = df.copy()
+
+    # Calculate Overall Summary Metrics (from full dataset)
     total_dur_hrs = df["sleep_duration_seconds"] / 3600.0
     avg_sleep_hrs = np.mean(total_dur_hrs)
     
@@ -73,7 +121,7 @@ def render_sleep_view(
 
     weekly_debt_hrs = sum(last_7d_dur - 8.0) if not last_7d_dur.empty else 0.0
 
-    # 1. Top KPI Grid
+    # 2. Top Recovery KPI Grid
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         render_metric_card(
@@ -109,42 +157,102 @@ def render_sleep_view(
             delta_type="pos" if weekly_debt_hrs >= -2.0 else "neg",
         )
 
-    # 2. Sleep Architecture Charts
+    # 3. Sleep Architecture & Stage Breakdown Chart (Filtered to Selected Timeframe, e.g. Last Month)
     render_section_header("Sleep Architecture & Stage Breakdown", icon_name="sleep")
-    st.plotly_chart(plot_sleep_stage_breakdown_chart(df), use_container_width=True)
+    st.plotly_chart(
+        plot_sleep_stage_breakdown_chart(
+            filtered_df,
+            title=f"<b>Daily Sleep Architecture & Stage Distribution ({timeframe})</b>",
+        ),
+        use_container_width=True,
+    )
 
+    # 4. Sleep Schedule & Circadian Timing Trends (Bedtime & Wake-Up Times)
+    render_section_header("Sleep Schedule & Circadian Timing Trends", icon_name="sleep")
+
+    circ_df = CircadianTimingCalculator.calculate_timing_dataframe(filtered_df)
+    circ_metrics = CircadianTimingCalculator.calculate_circadian_metrics(circ_df)
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        render_metric_card(
+            label="Average Bedtime",
+            value=circ_metrics["avg_bedtime_str"],
+            subtext=f"Consistency: ±{circ_metrics['bed_variability_min']:.0f} mins",
+            delta="Stable Onset" if circ_metrics["bed_variability_min"] <= 35 else "Variable Bedtime",
+            delta_type="pos" if circ_metrics["bed_variability_min"] <= 35 else "neg",
+        )
+    with k2:
+        render_metric_card(
+            label="Average Wake Time",
+            value=circ_metrics["avg_wake_str"],
+            subtext=f"Consistency: ±{circ_metrics['wake_variability_min']:.0f} mins",
+            delta="Stable Awakening" if circ_metrics["wake_variability_min"] <= 35 else "Variable Wake",
+            delta_type="pos" if circ_metrics["wake_variability_min"] <= 35 else "neg",
+        )
+    with k3:
+        render_metric_card(
+            label="Sleep Midpoint",
+            value=circ_metrics["midpoint_str"],
+            subtext="Circadian Phase Anchor",
+            delta="Mid-Sleep Core",
+            delta_type="neutral",
+        )
+    with k4:
+        render_metric_card(
+            label="Circadian Regularity",
+            value=f"{circ_metrics['regularity_score']:.0f} / 100",
+            subtext=circ_metrics["consistency_label"],
+            delta="Optimal Sync" if circ_metrics["regularity_score"] >= 80 else "Irregular Drift",
+            delta_type="pos" if circ_metrics["regularity_score"] >= 75 else "neg",
+        )
+
+    st.plotly_chart(
+        plot_sleep_schedule_and_timing_chart(
+            filtered_df,
+            title=f"<b>Sleeping Time & Waking Up Time Trend ({timeframe})</b>",
+        ),
+        use_container_width=True,
+    )
+
+    # 5. Sleep Score & Resting HR Dynamics
     render_section_header("Sleep Score & Resting HR Dynamics", icon_name="heartbeat")
-    st.plotly_chart(plot_sleep_score_and_rhr_chart(df), use_container_width=True)
+    st.plotly_chart(plot_sleep_score_and_rhr_chart(filtered_df), use_container_width=True)
 
-    # 3. Circadian Recovery & Sleep Science Callout
+    # 6. Circadian Recovery & Sports Science Insights Callout
     render_section_header("Circadian Recovery & Sports Science Insights", icon_name="sleep")
     sleep_icon = get_icon_html("sleep", size=20, margin_right=8)
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #1c1716 0%, #26201e 100%); border: 1px solid #3b322e; border-left: 4px solid #c1d37f; border-radius: 12px; padding: 18px 22px; margin-bottom: 24px;">
         <div style="font-size: 0.95rem; font-weight: 700; color: #f0e2a3; margin-bottom: 8px; display: flex; align-items: center;">
-            {sleep_icon}<span>Physiological Sleep Stages & Endurance Performance</span>
+            {sleep_icon}<span>Physiological Sleep Stages, Circadian Stability & Athletic Performance</span>
         </div>
         <div style="font-size: 0.84rem; color: #c8b99c; line-height: 1.6;">
-            • <strong>Slow-Wave Deep Sleep ({avg_deep_hrs:.1f}h avg)</strong> triggers Human Growth Hormone (HGH) release, protein synthesis, and muscle tissue repair after heavy aerobic workloads.<br>
-            • <strong>REM Sleep ({avg_rem_hrs:.1f}h avg)</strong> consolidates motor learning, neuromuscular coordination, and central nervous system (CNS) fatigue recovery.<br>
-            • <strong>Resting HR ({avg_rhr:.0f} bpm avg)</strong> is your primary autonomic nervous system indicator. An elevated RHR (+3–5 bpm above baseline) indicates incomplete recovery or impending illness.
+            • <strong>Circadian Regularity (Avg Bedtime {circ_metrics['avg_bedtime_str']} | Wake {circ_metrics['avg_wake_str']}):</strong> Going to sleep and waking up at consistent times anchors your suprachiasmatic nucleus (SCN), ensuring consistent melatonin and cortisol rhythms for deeper physical recovery.<br>
+            • <strong>Slow-Wave Deep Sleep ({avg_deep_hrs:.1f}h avg):</strong> Triggers Human Growth Hormone (HGH) release, protein synthesis, and muscle tissue repair after heavy aerobic workloads.<br>
+            • <strong>REM Sleep ({avg_rem_hrs:.1f}h avg):</strong> Consolidates motor learning, neuromuscular coordination, and central nervous system (CNS) fatigue recovery.<br>
+            • <strong>Resting HR ({avg_rhr:.0f} bpm avg):</strong> Your primary autonomic nervous system indicator. An elevated RHR (+3–5 bpm above baseline) indicates incomplete recovery, systemic inflammation, or impending illness.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 4. Sleep History Log Table
+    # 7. Enhanced Sleep History Log Table
     render_section_header("Daily Sleep Log History", icon_name="sleep")
     log_rows = []
-    for _, r in df.sort_values("date_dt", ascending=False).iterrows():
+    for _, r in circ_df.sort_values("date_dt", ascending=False).iterrows():
         dur_h = (r["sleep_duration_seconds"] / 3600.0) if pd.notna(r.get("sleep_duration_seconds")) else 0.0
         deep_h = (r["deep_sleep_seconds"] / 3600.0) if pd.notna(r.get("deep_sleep_seconds")) else 0.0
         rem_h = (r["rem_sleep_seconds"] / 3600.0) if pd.notna(r.get("rem_sleep_seconds")) else 0.0
         light_h = (r["light_sleep_seconds"] / 3600.0) if pd.notna(r.get("light_sleep_seconds")) else 0.0
         score_val = f"{int(r['sleep_score'])}/100" if pd.notna(r.get("sleep_score")) else "--"
         rhr_val = f"{int(r['resting_hr'])} bpm" if pd.notna(r.get("resting_hr")) else "--"
+        bed_str = r.get("bed_str") or "--"
+        wake_str = r.get("wake_str") or "--"
 
         log_rows.append({
             "Date": pd.to_datetime(r["date"]).strftime("%Y-%m-%d"),
+            "Bedtime": bed_str,
+            "Wake Time": wake_str,
             "Total Sleep": f"{dur_h:.1f} hrs",
             "Sleep Score": score_val,
             "Deep Sleep": f"{deep_h:.1f} hrs",

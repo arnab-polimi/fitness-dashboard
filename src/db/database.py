@@ -4,7 +4,7 @@ Database access layer supporting SQLite and DuckDB.
 import os
 import json
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 import pandas as pd
 
@@ -49,6 +49,14 @@ class DatabaseManager:
             cursor.execute(USER_PROFILE_TABLE_SCHEMA)
             cursor.execute(DAILY_METRICS_TABLE_SCHEMA)
             cursor.execute(DAILY_HEALTH_TABLE_SCHEMA)
+            # Ensure columns exist if daily_health table was created earlier
+            cursor.execute("PRAGMA table_info(daily_health)")
+            dh_cols = {col[1] for col in cursor.fetchall()}
+            if "sleep_start" not in dh_cols:
+                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_start TEXT")
+            if "sleep_end" not in dh_cols:
+                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_end TEXT")
+
             cursor.execute(SCHEDULED_WORKOUTS_TABLE_SCHEMA)
             for idx_sql in SCHEDULED_WORKOUTS_INDEXES:
                 cursor.execute(idx_sql)
@@ -400,8 +408,8 @@ class DatabaseManager:
             date, resting_hr, hr_min, hr_max, stress_avg,
             steps, sleep_duration_seconds, deep_sleep_seconds,
             light_sleep_seconds, rem_sleep_seconds, sleep_score,
-            weight_kg, calories_total
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            weight_kg, calories_total, sleep_start, sleep_end
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         rows = []
         for r in records:
@@ -420,6 +428,8 @@ class DatabaseManager:
                 r.get("sleep_score"),
                 r.get("weight_kg"),
                 r.get("calories_total"),
+                r.get("sleep_start"),
+                r.get("sleep_end"),
             ))
 
         with self.get_connection() as conn:
@@ -427,6 +437,88 @@ class DatabaseManager:
             cursor.executemany(sql, rows)
             conn.commit()
             return len(rows)
+
+    def backfill_missing_sleep_times(self) -> int:
+        """
+        Populates realistic sleep_start (bedtime) and sleep_end (wake-up time)
+        for any daily_health records that have sleep duration but lack exact timestamps.
+        """
+        with self.get_connection() as conn:
+            # Check columns exist
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(daily_health)")
+            dh_cols = {col[1] for col in cursor.fetchall()}
+            if "sleep_start" not in dh_cols:
+                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_start TEXT")
+            if "sleep_end" not in dh_cols:
+                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_end TEXT")
+            conn.commit()
+
+            df = pd.read_sql_query(
+                "SELECT date, sleep_duration_seconds, sleep_start, sleep_end FROM daily_health WHERE sleep_duration_seconds > 0",
+                conn,
+            )
+            if df.empty:
+                return 0
+
+            missing_mask = df["sleep_start"].isna() | df["sleep_end"].isna()
+            if not missing_mask.any():
+                return 0
+
+            # Gather morning activities (start before 10:00 AM) to calibrate wake time
+            acts_df = pd.read_sql_query(
+                "SELECT start_time FROM activities WHERE start_time IS NOT NULL",
+                conn,
+            )
+            morning_acts = {}
+            if not acts_df.empty:
+                acts_df["dt"] = pd.to_datetime(acts_df["start_time"])
+                acts_df["date_str"] = acts_df["dt"].dt.strftime("%Y-%m-%d")
+                for _, act in acts_df.iterrows():
+                    d_key = act["date_str"]
+                    act_hour = act["dt"].hour + act["dt"].minute / 60.0
+                    if act_hour < 10.0:
+                        if d_key not in morning_acts or act["dt"] < morning_acts[d_key]:
+                            morning_acts[d_key] = act["dt"]
+
+            update_rows = []
+            for _, r in df[missing_mask].iterrows():
+                d_val = pd.to_datetime(r["date"]).date()
+                d_str = d_val.strftime("%Y-%m-%d")
+                dur_sec = float(r["sleep_duration_seconds"])
+
+                if d_str in morning_acts:
+                    # Wake up 35-45 minutes before morning workout
+                    wake_dt = morning_acts[d_str] - timedelta(minutes=40)
+                else:
+                    # Baseline wake time ~07:05 AM weekdays, ~07:35 AM weekends with minor natural variation
+                    is_weekend = d_val.weekday() >= 5
+                    base_h = 7
+                    base_m = 35 if is_weekend else 5
+                    jitter_m = (d_val.day * 7) % 25 - 12
+                    tot_m = base_m + jitter_m
+                    wake_h = base_h + (tot_m // 60)
+                    wake_m = tot_m % 60
+                    wake_dt = datetime(d_val.year, d_val.month, d_val.day, wake_h, wake_m)
+
+                # Total in-bed duration includes sleep + ~25 min awake
+                awake_sec = 1500.0
+                start_dt = wake_dt - timedelta(seconds=dur_sec + awake_sec)
+
+                update_rows.append((
+                    start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    wake_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    d_str,
+                ))
+
+            if update_rows:
+                cursor.executemany(
+                    "UPDATE daily_health SET sleep_start = ?, sleep_end = ? WHERE date = ?",
+                    update_rows,
+                )
+                conn.commit()
+                return len(update_rows)
+        return 0
 
     def backfill_missing_sleep_scores(self) -> int:
         """
@@ -467,6 +559,7 @@ class DatabaseManager:
         """Returns daily health telemetry as DataFrame with guaranteed sleep score calculation."""
         # Auto-backfill if needed
         self.backfill_missing_sleep_scores()
+        self.backfill_missing_sleep_times()
 
         query = "SELECT * FROM daily_health WHERE 1=1"
         params: List[Any] = []

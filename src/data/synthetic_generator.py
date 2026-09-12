@@ -283,6 +283,11 @@ def generate_synthetic_health_records(days: int = 180, seed: int = 42) -> List[D
         rhr = round(random.uniform(46.0, 54.0), 1)
         hr_min = round(rhr - random.uniform(2, 5), 1)
         hr_max = round(random.uniform(155.0, 185.0), 1)
+        # Circadian schedule: bedtime ~22:45 to 23:45, wake ~06:45 to 07:45
+        wake_min_offset = random.randint(-20, 35)
+        wake_dt = datetime(curr.year, curr.month, curr.day, 7, 10) + timedelta(minutes=wake_min_offset)
+        awake_sec = random.uniform(1200, 2100)
+        start_dt = wake_dt - timedelta(seconds=total_sec + awake_sec)
 
         records.append({
             "date": curr,
@@ -298,6 +303,8 @@ def generate_synthetic_health_records(days: int = 180, seed: int = 42) -> List[D
             "sleep_score": round(score, 1),
             "weight_kg": round(70.0 + random.uniform(-0.8, 0.8), 1),
             "calories_total": random.randint(2100, 3100),
+            "sleep_start": start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+            "sleep_end": wake_dt.strftime("%Y-%m-%d %H:%M:%S"),
         })
         curr += timedelta(days=1)
 

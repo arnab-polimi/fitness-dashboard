@@ -154,6 +154,30 @@ class GarminCloudSync:
                     scores = sleep_raw.get("sleepScores") or {}
                     if scores.get("overall", {}).get("value"):
                         record["sleep_score"] = float(scores["overall"]["value"])
+
+                    # Extract sleep onset (bedtime) and wake-up timestamps
+                    start_val = (
+                        dto.get("sleepStartTimeLocal")
+                        or dto.get("sleepStartTimestampLocal")
+                        or dto.get("sleepStartTimestampGMT")
+                        or dto.get("sleepStartTimeGMT")
+                    )
+                    end_val = (
+                        dto.get("sleepEndTimeLocal")
+                        or dto.get("sleepEndTimestampLocal")
+                        or dto.get("sleepEndTimestampGMT")
+                        or dto.get("sleepEndTimeGMT")
+                    )
+                    if start_val:
+                        if isinstance(start_val, (int, float)):
+                            record["sleep_start"] = datetime.fromtimestamp(start_val / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            record["sleep_start"] = str(start_val).replace("T", " ")
+                    if end_val:
+                        if isinstance(end_val, (int, float)):
+                            record["sleep_end"] = datetime.fromtimestamp(end_val / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            record["sleep_end"] = str(end_val).replace("T", " ")
             except Exception:
                 pass
 
