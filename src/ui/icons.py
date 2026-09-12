@@ -74,7 +74,7 @@ ICON_MAPPINGS: Dict[str, str] = {
     "cardiovascular": "heartbeat.png",
     "resting_hr": "heartbeat.png",
     "recovery": "recovery.png",
-    "sleep": "recovery.png",
+    "sleep": "sleep.png",
     "rest": "recovery.png",
     "cadence": "cadence.png",
     "spm": "cadence.png",

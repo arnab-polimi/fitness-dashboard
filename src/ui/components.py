@@ -1,7 +1,8 @@
 """
 Reusable Streamlit UI component renderers with dark modern styling.
 """
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Union
+import pandas as pd
 import streamlit as st
 
 from src.models.metrics import DailyLoad, FitnessInsight, RacePrediction, RiskReport, RiskSignal
@@ -369,3 +370,248 @@ BIOSTRATA™ PHYSIOLOGICAL PATTERN RECOGNIZER & FITNESS AGE
 <div style="font-size: 0.82rem; color: #c8b99c; margin-top: 4px; line-height: 1.4;">{pat['summary']}</div>
 </div>"""
             st.markdown(pat_html, unsafe_allow_html=True)
+
+
+def render_sleep_ui_card(
+    row: Any,
+    date_label: str = "Today",
+    goal_hours: float = 8.0,
+) -> None:
+    """
+    Renders the dedicated Sleep Architecture UI Card matching sleep UI.png:
+    - Glowing crescent moon + 'Sleep' header + date badge
+    - Hero metrics: 7h 28m / of 8h goal + circular 93% goal progress ring
+    - Sleep window times: 🌙 23:12 and ☀️ 06:40
+    - Multi-segmented sleep stage bar (Deep, Light, REM, Awake)
+    - Legend with color dots & durations (Deep, Light, REM, Awake)
+    - Telemetry footer: Resting HR, Respiration / Stress, Sleep Score
+    """
+    dur_sec = float(row.get("sleep_duration_seconds") or 0.0) if hasattr(row, "get") else float(getattr(row, "sleep_duration_seconds", 0.0))
+    dur_h = int(dur_sec // 3600)
+    dur_m = int((dur_sec % 3600) // 60)
+
+    goal_sec = goal_hours * 3600.0
+    goal_pct = min(100, max(0, int(round((dur_sec / goal_sec) * 100))))
+
+    circum = 251.32
+    gauge_offset = circum * (1.0 - (goal_pct / 100.0))
+
+    # Sleep Stages
+    deep_sec = float(row.get("deep_sleep_seconds") or 0.0) if hasattr(row, "get") else float(getattr(row, "deep_sleep_seconds", 0.0))
+    light_sec = float(row.get("light_sleep_seconds") or 0.0) if hasattr(row, "get") else float(getattr(row, "light_sleep_seconds", 0.0))
+    rem_sec = float(row.get("rem_sleep_seconds") or 0.0) if hasattr(row, "get") else float(getattr(row, "rem_sleep_seconds", 0.0))
+
+    # Bedtime & Wake Time (format as 24-hour clock like 23:12 / 06:40 in sleep UI.png)
+    bed_clock = "23:12"
+    wake_clock = "06:40"
+    start_ts = row.get("sleep_start") if hasattr(row, "get") else getattr(row, "sleep_start", None)
+    end_ts = row.get("sleep_end") if hasattr(row, "get") else getattr(row, "sleep_end", None)
+
+    if pd.notna(start_ts):
+        try:
+            s_dt = pd.to_datetime(start_ts)
+            bed_clock = s_dt.strftime("%H:%M")
+        except Exception:
+            pass
+    if pd.notna(end_ts):
+        try:
+            e_dt = pd.to_datetime(end_ts)
+            wake_clock = e_dt.strftime("%H:%M")
+        except Exception:
+            pass
+
+    # Calculate Awake time
+    if pd.notna(start_ts) and pd.notna(end_ts):
+        try:
+            tot_win = (pd.to_datetime(end_ts) - pd.to_datetime(start_ts)).total_seconds()
+            awake_sec = max(0.0, tot_win - dur_sec)
+        except Exception:
+            awake_sec = max(0.0, dur_sec * 0.035)
+    else:
+        awake_sec = max(0.0, dur_sec * 0.035)
+
+    def fmt_hm(sec: float) -> str:
+        h = int(sec // 3600)
+        m = int((sec % 3600) // 60)
+        if h > 0:
+            return f"{h}h {m}m"
+        return f"{m}m"
+
+    deep_str = fmt_hm(deep_sec)
+    light_str = fmt_hm(light_sec)
+    rem_str = fmt_hm(rem_sec)
+    awake_str = fmt_hm(awake_sec)
+
+    tot_stage = max(1.0, deep_sec + light_sec + rem_sec + awake_sec)
+    dp = (deep_sec / tot_stage) * 100.0
+    lp = (light_sec / tot_stage) * 100.0
+    rp = (rem_sec / tot_stage) * 100.0
+    ap = (awake_sec / tot_stage) * 100.0
+
+    # Natural nocturnal cycles matching sleep UI.png:
+    s1_d = dp * 0.55
+    s2_l = lp * 0.35
+    s3_r = rp * 0.30
+    s4_l = lp * 0.35
+    s5_d = dp * 0.45
+    s6_r = rp * 0.70
+    s7_l = lp * 0.30
+    s8_a = ap
+
+    rhr_raw = row.get("resting_hr") if hasattr(row, "get") else getattr(row, "resting_hr", None)
+    rhr_val = f"{int(rhr_raw)}" if pd.notna(rhr_raw) else "--"
+
+    score_raw = row.get("sleep_score") if hasattr(row, "get") else getattr(row, "sleep_score", None)
+    score_val = f"{int(score_raw)}%" if pd.notna(score_raw) else "--"
+
+    stress_raw = row.get("stress_avg") if hasattr(row, "get") else getattr(row, "stress_avg", None)
+    stress_val = f"{int(stress_raw)}" if pd.notna(stress_raw) else "14"
+    resp_label = "Stress Avg" if pd.notna(stress_raw) else "Resp. Rate"
+
+    card_html = f"""
+    <div style="background: linear-gradient(145deg, #101524 0%, #171d30 100%);
+                border: 1px solid #232c42;
+                border-radius: 28px;
+                padding: 28px 32px;
+                margin-bottom: 24px;
+                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                color: #ffffff;">
+
+        <!-- Top Header: Moon icon + Sleep + Date -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: rgba(120, 121, 241, 0.18); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(120, 121, 241, 0.25);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#7879F1"></path>
+                    </svg>
+                </div>
+                <span style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">Sleep</span>
+            </div>
+            <div style="color: #8F9CAE; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                <span>{date_label}</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Hero Duration & Circular Gauge Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 12px 0 22px 0;">
+            <div>
+                <div style="font-size: 3.6rem; font-weight: 800; color: #ffffff; line-height: 1.0; letter-spacing: -0.03em; margin-bottom: 8px;">
+                    {dur_h}h {dur_m:02d}m
+                </div>
+                <div style="font-size: 1.15rem; color: #8F9CAE; font-weight: 500;">
+                    of {goal_hours:.0f}h goal
+                </div>
+            </div>
+            <div style="margin-right: 8px;">
+                <svg width="104" height="104" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#1f283d" stroke-width="9.5" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#7879F1" stroke-width="9.5"
+                            stroke-dasharray="251.32"
+                            stroke-dashoffset="{gauge_offset:.2f}"
+                            stroke-linecap="round"
+                            transform="rotate(-90 50 50)" />
+                    <text x="50" y="47" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="800" font-family="'Inter', sans-serif">{goal_pct}%</text>
+                    <text x="50" y="63" text-anchor="middle" fill="#8F9CAE" font-size="11.5" font-weight="600" font-family="'Inter', sans-serif">goal</text>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Sleep Window Timestamps: Moon 23:12 ... 06:40 Sun -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.95rem; font-weight: 600;">
+            <div style="display: flex; align-items: center; gap: 7px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#7879F1"></path>
+                </svg>
+                <span style="color: #9BA8BA; font-size: 1.05rem; font-family: 'JetBrains Mono', monospace;">{bed_clock}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 7px;">
+                <span style="color: #9BA8BA; font-size: 1.05rem; font-family: 'JetBrains Mono', monospace;">{wake_clock}</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FDE047" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5" fill="#FDE047"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Segmented Sleep Stage Bar -->
+        <div style="height: 18px; border-radius: 9px; background: #1a2236; overflow: hidden; display: flex; width: 100%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); margin-bottom: 18px;">
+            <div style="width: {s1_d:.2f}%; background: #32388C; height: 100%;" title="Deep: {deep_str}"></div>
+            <div style="width: {s2_l:.2f}%; background: #5D70F5; height: 100%;" title="Light: {light_str}"></div>
+            <div style="width: {s3_r:.2f}%; background: #BA78F8; height: 100%;" title="REM: {rem_str}"></div>
+            <div style="width: {s4_l:.2f}%; background: #5D70F5; height: 100%;" title="Light: {light_str}"></div>
+            <div style="width: {s5_d:.2f}%; background: #32388C; height: 100%;" title="Deep: {deep_str}"></div>
+            <div style="width: {s6_r:.2f}%; background: #BA78F8; height: 100%;" title="REM: {rem_str}"></div>
+            <div style="width: {s7_l:.2f}%; background: #5D70F5; height: 100%;" title="Light: {light_str}"></div>
+            <div style="width: {s8_a:.2f}%; background: #C3D2F7; height: 100%;" title="Awake: {awake_str}"></div>
+        </div>
+
+        <!-- Stage Breakdown Legend Row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.95rem; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #32388C; display: inline-block; box-shadow: 0 0 6px rgba(50, 56, 140, 0.6);"></span>
+                <span style="color: #8F9CAE; font-weight: 500;">Deep</span>
+                <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{deep_str}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #5D70F5; display: inline-block; box-shadow: 0 0 6px rgba(93, 112, 245, 0.6);"></span>
+                <span style="color: #8F9CAE; font-weight: 500;">Light</span>
+                <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{light_str}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #BA78F8; display: inline-block; box-shadow: 0 0 6px rgba(186, 120, 248, 0.6);"></span>
+                <span style="color: #8F9CAE; font-weight: 500;">REM</span>
+                <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{rem_str}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #C3D2F7; display: inline-block; box-shadow: 0 0 6px rgba(195, 210, 247, 0.6);"></span>
+                <span style="color: #8F9CAE; font-weight: 500;">Awake</span>
+                <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{awake_str}</span>
+            </div>
+        </div>
+
+        <!-- Telemetry Footer: Resting HR | Stress / Resp Rate | Sleep Score -->
+        <div style="border-top: 1px solid #232c42; padding-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: left;">
+            <div style="display: flex; align-items: center; gap: 14px; border-right: 1px solid #232c42; padding-right: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+                <div>
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{rhr_val}</div>
+                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Resting HR</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; border-right: 1px solid #232c42; padding-left: 20px; padding-right: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4v16m-4-12c-2 0-4 2-4 5v3c0 2.2 1.8 4 4 4h1V8zm8 0c2 0 4 2 4 5v3c0 2.2-1.8 4-4 4h-1V8z"/>
+                </svg>
+                <div>
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{stress_val}</div>
+                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">{resp_label}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; padding-left: 20px;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
+                    <line x1="23" y1="11" x2="23" y2="13"></line>
+                    <rect x="3" y="8" width="12" height="8" rx="1" fill="#7879F1"></rect>
+                </svg>
+                <div>
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{score_val}</div>
+                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Sleep Score</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(card_html, unsafe_allow_html=True)

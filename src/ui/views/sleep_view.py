@@ -8,7 +8,7 @@ import numpy as np
 
 from src.models.user_profile import UserProfile
 from src.analytics.sleep_score import CircadianTimingCalculator
-from src.ui.components import render_metric_card
+from src.ui.components import render_metric_card, render_sleep_ui_card
 from src.ui.charts import (
     plot_sleep_stage_breakdown_chart,
     plot_sleep_schedule_and_timing_chart,
@@ -157,8 +157,35 @@ def render_sleep_view(
             delta_type="pos" if weekly_debt_hrs >= -2.0 else "neg",
         )
 
-    # 3. Sleep Architecture & Stage Breakdown Chart (Filtered to Selected Timeframe, e.g. Last Month)
+    # Calculate Circadian & Sleep Timing Telemetry for the active timeframe
+    circ_df = CircadianTimingCalculator.calculate_timing_dataframe(filtered_df)
+    circ_metrics = CircadianTimingCalculator.calculate_circadian_metrics(circ_df)
+
+    # 3. Sleep Architecture & Stage Breakdown (Featured Sleep UI Card + Stage Bar Chart)
     render_section_header("Sleep Architecture & Stage Breakdown", icon_name="sleep")
+
+    # Interactive Night Selector for Sleep UI Card
+    nights_list = circ_df.sort_values("date_dt", ascending=False).reset_index(drop=True)
+    if not nights_list.empty:
+        night_labels = [
+            f"{pd.to_datetime(r['date']).strftime('%b %d, %Y')}" + (" (Latest)" if idx == 0 else "")
+            for idx, (_, r) in enumerate(nights_list.iterrows())
+        ]
+        col_c1, col_c2 = st.columns([4, 6])
+        with col_c1:
+            sel_night_idx = st.selectbox(
+                "Inspect Night Telemetry",
+                range(len(night_labels)),
+                format_func=lambda i: night_labels[i],
+                index=0,
+                key="selected_sleep_ui_night_idx",
+            )
+        selected_night_row = nights_list.iloc[sel_night_idx]
+        selected_date_label = "Today" if sel_night_idx == 0 else pd.to_datetime(selected_night_row["date"]).strftime("%b %d")
+
+        # Render the high-fidelity Sleep Architecture UI Card matching sleep UI.png
+        render_sleep_ui_card(selected_night_row, date_label=selected_date_label, goal_hours=8.0)
+
     st.plotly_chart(
         plot_sleep_stage_breakdown_chart(
             filtered_df,
@@ -169,9 +196,6 @@ def render_sleep_view(
 
     # 4. Sleep Schedule & Circadian Timing Trends (Bedtime & Wake-Up Times)
     render_section_header("Sleep Schedule & Circadian Timing Trends", icon_name="sleep")
-
-    circ_df = CircadianTimingCalculator.calculate_timing_dataframe(filtered_df)
-    circ_metrics = CircadianTimingCalculator.calculate_circadian_metrics(circ_df)
 
     k1, k2, k3, k4 = st.columns(4)
     with k1:

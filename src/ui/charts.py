@@ -1035,8 +1035,8 @@ def plot_sleep_stage_breakdown_chart(
             y=df["deep_hrs"],
             name="Deep Sleep (Physical Repair)",
             marker=dict(
-                color="#201C5F",
-                line=dict(width=0.6, color="#1c1716"),
+                color="#32388C",
+                line=dict(width=0.6, color="#101524"),
             ),
             hovertemplate="<b>%{x}</b><br>Deep Sleep: <b>%{y:.2f} hrs</b><extra></extra>",
         )
@@ -1047,8 +1047,8 @@ def plot_sleep_stage_breakdown_chart(
             y=df["light_hrs"],
             name="Light Sleep",
             marker=dict(
-                color="#6E6EC3",
-                line=dict(width=0.6, color="#1c1716"),
+                color="#5D70F5",
+                line=dict(width=0.6, color="#101524"),
             ),
             hovertemplate="<b>%{x}</b><br>Light Sleep: <b>%{y:.2f} hrs</b><extra></extra>",
         )
@@ -1059,8 +1059,8 @@ def plot_sleep_stage_breakdown_chart(
             y=df["rem_hrs"],
             name="REM Sleep (Neural Restoration)",
             marker=dict(
-                color="#ddddfc",
-                line=dict(width=0.6, color="#1c1716"),
+                color="#BA78F8",
+                line=dict(width=0.6, color="#101524"),
             ),
             hovertemplate="<b>%{x}</b><br>REM Sleep: <b>%{y:.2f} hrs</b><extra></extra>",
         )
