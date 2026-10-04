@@ -350,7 +350,9 @@ def render_overview_view(
             )
 
         # Visual chart for measured heart rate zones (full width & responsive)
-        st.plotly_chart(plot_garmin_hr_zones_breakdown(activities_df), use_container_width=True)
+        zone_fig = plot_garmin_hr_zones_breakdown(activities_df)
+        if zone_fig:
+            st.plotly_chart(zone_fig, use_container_width=True)
 
     # 6. Fitness Age & Physiological Pattern Recognizer
     fa_report = FitnessAgeEngine.calculate_fitness_age(

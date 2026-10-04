@@ -1647,15 +1647,13 @@ def plot_fenix_running_dynamics_chart(activities_df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def plot_garmin_hr_zones_breakdown(activities_df: pd.DataFrame) -> go.Figure:
+def plot_garmin_hr_zones_breakdown(activities_df: pd.DataFrame) -> Optional[go.Figure]:
     """
     Stacked breakdown of exact time spent in Garmin Heart Rate Zones (Z1 - Z5)
     captured natively by the Garmin Fenix 7.
     """
     if activities_df.empty or "hrz_1_seconds" not in activities_df.columns:
-        fig = go.Figure()
-        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Garmin Heart Rate Zone Telemetry")
-        return fig
+        return None
 
     # Filter activities with recorded zone time
     fenix_runs = activities_df[
@@ -1667,9 +1665,7 @@ def plot_garmin_hr_zones_breakdown(activities_df: pd.DataFrame) -> go.Figure:
     ].tail(10).copy()
 
     if fenix_runs.empty:
-        fig = go.Figure()
-        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Fenix 7 HR Zone Telemetry Available")
-        return fig
+        return None
 
     fenix_runs["label"] = pd.to_datetime(fenix_runs["start_time"]).dt.strftime("%b %d") + " - " + fenix_runs["title"].str[:14]
 
