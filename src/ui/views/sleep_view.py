@@ -14,6 +14,8 @@ from src.ui.charts import (
     plot_sleep_stage_breakdown_chart,
     plot_sleep_schedule_and_timing_chart,
     plot_sleep_score_and_rhr_chart,
+    plot_hrv_status_chart,
+    plot_body_battery_chart,
 )
 from src.ui.icons import render_view_header, render_section_header, get_icon_html
 
@@ -244,7 +246,20 @@ def render_sleep_view(
     render_section_header("Sleep Score & Resting HR Dynamics", icon_name="heartbeat")
     st.plotly_chart(plot_sleep_score_and_rhr_chart(filtered_df), use_container_width=True)
 
-    # 6. Circadian Recovery & Sports Science Insights Callout
+    # 6. Garmin Fenix 7 Overnight HRV & Body Battery Dynamics
+    has_fenix_telemetry = (
+        ("hrv_last_night" in filtered_df.columns and filtered_df["hrv_last_night"].notna().any()) or
+        ("body_battery_max" in filtered_df.columns and filtered_df["body_battery_max"].notna().any())
+    )
+    if has_fenix_telemetry:
+        render_section_header("Garmin Fenix 7 Autonomic & Body Battery™ Dynamics", icon_name="heartbeat")
+        gc1, gc2 = st.columns(2)
+        with gc1:
+            st.plotly_chart(plot_hrv_status_chart(filtered_df), use_container_width=True)
+        with gc2:
+            st.plotly_chart(plot_body_battery_chart(filtered_df), use_container_width=True)
+
+    # 7. Circadian Recovery & Sports Science Insights Callout
     render_section_header("Circadian Recovery & Sports Science Insights", icon_name="sleep")
     sleep_icon = get_icon_html("sleep", size=20, margin_right=8)
     callout_html = textwrap.dedent(f"""
@@ -256,7 +271,7 @@ def render_sleep_view(
             • <strong>Circadian Regularity (Avg Bedtime {circ_metrics['avg_bedtime_str']} | Wake {circ_metrics['avg_wake_str']}):</strong> Going to sleep and waking up at consistent times anchors your suprachiasmatic nucleus (SCN), ensuring consistent melatonin and cortisol rhythms for deeper physical recovery.<br>
             • <strong>Slow-Wave Deep Sleep ({avg_deep_hrs:.1f}h avg):</strong> Triggers Human Growth Hormone (HGH) release, protein synthesis, and muscle tissue repair after heavy aerobic workloads.<br>
             • <strong>REM Sleep ({avg_rem_hrs:.1f}h avg):</strong> Consolidates motor learning, neuromuscular coordination, and central nervous system (CNS) fatigue recovery.<br>
-            • <strong>Resting HR ({avg_rhr:.0f} bpm avg):</strong> Your primary autonomic nervous system indicator. An elevated RHR (+3–5 bpm above baseline) indicates incomplete recovery, systemic inflammation, or impending illness.
+            • <strong>Overnight HRV & Resting HR:</strong> Continuous nocturnal HRV (rMSSD) reflects autonomic balance. Sustained elevated baseline HRV indicates strong cardiovascular fitness and adaptive readiness, while a sharp dip indicates under-recovery or immune challenge.
         </div>
     </div>
     """).strip()
@@ -265,8 +280,8 @@ def render_sleep_view(
     else:
         st.markdown(callout_html, unsafe_allow_html=True)
 
-    # 7. Enhanced Sleep History Log Table
-    render_section_header("Daily Sleep Log History", icon_name="sleep")
+    # 8. Enhanced Sleep History Log Table
+    render_section_header("Daily Sleep & Recovery Log History", icon_name="sleep")
     log_rows = []
     for _, r in circ_df.sort_values("date_dt", ascending=False).iterrows():
         dur_h = (r["sleep_duration_seconds"] / 3600.0) if pd.notna(r.get("sleep_duration_seconds")) else 0.0
@@ -274,19 +289,31 @@ def render_sleep_view(
         rem_h = (r["rem_sleep_seconds"] / 3600.0) if pd.notna(r.get("rem_sleep_seconds")) else 0.0
         light_h = (r["light_sleep_seconds"] / 3600.0) if pd.notna(r.get("light_sleep_seconds")) else 0.0
         score_val = f"{int(r['sleep_score'])}/100" if pd.notna(r.get("sleep_score")) else "--"
+        qual_val = str(r.get("sleep_qualifier") or "").upper() if r.get("sleep_qualifier") else "--"
         rhr_val = f"{int(r['resting_hr'])} bpm" if pd.notna(r.get("resting_hr")) else "--"
+        hrv_val = f"{int(r['hrv_last_night'])} ms" if pd.notna(r.get("hrv_last_night")) else "--"
+        bb_val = f"{int(r['body_battery_max'])}" if pd.notna(r.get("body_battery_max")) else "--"
+        spo2_val = f"{float(r['sleep_spo2_avg'] or r.get('spo2_avg', 0)):.0f}%" if pd.notna(r.get("sleep_spo2_avg")) or pd.notna(r.get("spo2_avg")) else "--"
         bed_str = r.get("bed_str") or "--"
         wake_str = r.get("wake_str") or "--"
 
-        log_rows.append({
+        row_dict = {
             "Date": pd.to_datetime(r["date"]).strftime("%Y-%m-%d"),
             "Bedtime": bed_str,
             "Wake Time": wake_str,
             "Total Sleep": f"{dur_h:.1f} hrs",
             "Sleep Score": score_val,
+            "Quality": qual_val,
             "Deep Sleep": f"{deep_h:.1f} hrs",
             "REM Sleep": f"{rem_h:.1f} hrs",
-            "Light Sleep": f"{light_h:.1f} hrs",
             "Resting HR": rhr_val,
-        })
+        }
+        if "hrv_last_night" in circ_df.columns:
+            row_dict["Overnight HRV"] = hrv_val
+        if "body_battery_max" in circ_df.columns:
+            row_dict["Body Battery"] = bb_val
+        if "spo2_avg" in circ_df.columns or "sleep_spo2_avg" in circ_df.columns:
+            row_dict["SpO2"] = spo2_val
+
+        log_rows.append(row_dict)
     st.dataframe(pd.DataFrame(log_rows), use_container_width=True, hide_index=True)

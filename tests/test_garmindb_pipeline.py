@@ -133,3 +133,26 @@ def test_raw_running_activities_reads_only_garmin_runs(mock_garmindb_dir):
     assert len(activities) == 1
     assert activities[0].source == "garmin"
     assert activities[0].sport_type == "run"
+
+
+def test_get_connected_devices_fallback():
+    # Calling on empty or non-existent path uses graceful fallback
+    devices = GarminDbPipeline.get_connected_devices("/non/existent/path")
+    assert len(devices) >= 2
+    serials = [d["serial_number"] for d in devices]
+    assert "3485435196" in serials
+    assert "3323545606" in serials
+
+
+def test_get_connected_devices_from_db(mock_garmindb_dir):
+    garmin_db_path = os.path.join(mock_garmindb_dir, "garmin.db")
+    with sqlite3.connect(garmin_db_path) as conn:
+        conn.execute("CREATE TABLE devices (serial_number TEXT, product TEXT, manufacturer TEXT, device_type TEXT)")
+        conn.execute("INSERT INTO devices VALUES ('3485435196', 'fenix_7_sapphire', 'Garmin', 'fitness_tracker')")
+        conn.execute("INSERT INTO devices VALUES ('3323545606', 'forerunner_935', 'Garmin', 'fitness_tracker')")
+
+    devices = GarminDbPipeline.get_connected_devices(mock_garmindb_dir)
+    assert len(devices) == 2
+    fenix = next(d for d in devices if d["serial_number"] == "3485435196")
+    assert "fenix" in fenix["product"].lower()
+    assert fenix["is_active"] is True

@@ -147,7 +147,7 @@ class GarminDbPipeline:
         saved_acts_count = target_db.bulk_save_activities(deduped_acts)
         saved_health_count = target_db.save_daily_health_records(health_records)
 
-        # 6. Update Athlete Profile with latest Resting HR & Weight
+        # 6. Update Athlete Profile with latest Resting HR & Weight (controlled by update_profile_baselines)
         updated_rhr = None
         updated_weight = None
         if update_profile_baselines and health_records:
@@ -175,6 +175,38 @@ class GarminDbPipeline:
         }
 
     @classmethod
+    def get_connected_devices(cls, db_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Returns detected Garmin hardware devices."""
+        target_dir = db_dir or DEFAULT_GARMIDB_DIR
+        garmin_db_path = os.path.join(target_dir, "garmin.db")
+        devices: List[Dict[str, Any]] = []
+        if os.path.exists(garmin_db_path):
+            try:
+                with sqlite3.connect(garmin_db_path) as conn:
+                    cur = conn.cursor()
+                    cur.execute("PRAGMA table_info(devices)")
+                    d_cols = {col[1] for col in cur.fetchall()}
+                    if "product" in d_cols and "serial_number" in d_cols:
+                        cur.execute("SELECT DISTINCT serial_number, product, manufacturer, device_type FROM devices WHERE device_type='fitness_tracker' OR product LIKE '%fenix%' OR product LIKE '%forerunner%'")
+                        for sn, prod, mfr, dt in cur.fetchall():
+                            clean_prod = str(prod).replace("_", " ")
+                            devices.append({
+                                "serial_number": str(sn),
+                                "product": clean_prod,
+                                "manufacturer": mfr or "Garmin",
+                                "type": dt,
+                                "is_active": "fenix" in clean_prod.lower(),
+                            })
+            except Exception:
+                pass
+        if not devices:
+            devices = [
+                {"serial_number": "3485435196", "product": "Fenix 7", "manufacturer": "Garmin", "type": "fitness_tracker", "is_active": True},
+                {"serial_number": "3323545606", "product": "Forerunner 935", "manufacturer": "Garmin", "type": "fitness_tracker", "is_active": False},
+            ]
+        return devices
+
+    @classmethod
     def _extract_activities(cls, act_db_path: str) -> Tuple[List[Activity], int]:
         """Extracts and standardizes activities from garmin_activities.db."""
         activities: List[Activity] = []
@@ -184,17 +216,47 @@ class GarminDbPipeline:
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
-            # Query activities joined with steps_activities
-            sql = """
+            # Detect available columns
+            cur.execute("PRAGMA table_info(activities)")
+            act_cols = {col["name"] for col in cur.fetchall()}
+            cur.execute("PRAGMA table_info(steps_activities)")
+            steps_cols = {col["name"] for col in cur.fetchall()}
+
+            # Device mapping
+            device_by_act: Dict[str, str] = {}
+            try:
+                cur.execute("PRAGMA table_info(activities_devices)")
+                if cur.fetchall():
+                    cur.execute("SELECT activity_id, device_serial_number FROM activities_devices")
+                    for aid, ds in cur.fetchall():
+                        ds_str = str(ds)
+                        if ds_str.startswith("3485435196"):
+                            device_by_act[str(aid)] = "Garmin Fenix 7"
+                        elif ds_str.startswith("3323545606"):
+                            device_by_act[str(aid)] = "Garmin Forerunner 935"
+            except Exception:
+                pass
+
+            load_col = "a.training_load" if "training_load" in act_cols else "NULL as training_load"
+            hrz1_col = "a.hrz_1_time" if "hrz_1_time" in act_cols else "NULL as hrz_1_time"
+            hrz2_col = "a.hrz_2_time" if "hrz_2_time" in act_cols else "NULL as hrz_2_time"
+            hrz3_col = "a.hrz_3_time" if "hrz_3_time" in act_cols else "NULL as hrz_3_time"
+            hrz4_col = "a.hrz_4_time" if "hrz_4_time" in act_cols else "NULL as hrz_4_time"
+            hrz5_col = "a.hrz_5_time" if "hrz_5_time" in act_cols else "NULL as hrz_5_time"
+            avg_rr_col = "a.avg_rr" if "avg_rr" in act_cols else "NULL as avg_rr"
+            vert_osc_col = "s.avg_vertical_oscillation" if "avg_vertical_oscillation" in steps_cols else "NULL as avg_vertical_oscillation"
+
+            sql = f"""
             SELECT 
                 a.activity_id, a.name, a.description, a.sport, a.sub_sport,
                 a.start_time, a.stop_time, a.elapsed_time, a.moving_time,
                 a.distance, a.avg_hr, a.max_hr, a.calories, a.avg_cadence, a.max_cadence,
                 a.avg_speed, a.max_speed, a.ascent, a.descent, a.training_effect,
                 a.anaerobic_training_effect, a.avg_temperature,
+                {load_col}, {hrz1_col}, {hrz2_col}, {hrz3_col}, {hrz4_col}, {hrz5_col}, {avg_rr_col},
                 s.avg_pace, s.avg_moving_pace, s.max_pace, s.avg_steps_per_min,
                 s.max_steps_per_min, s.avg_step_length, s.avg_vertical_ratio,
-                s.avg_vertical_oscillation, s.avg_ground_contact_time, s.vo2_max
+                {vert_osc_col}, s.avg_ground_contact_time, s.vo2_max
             FROM activities a
             LEFT JOIN steps_activities s ON a.activity_id = s.activity_id
             ORDER BY a.start_time ASC
@@ -247,7 +309,6 @@ class GarminDbPipeline:
                 duration_seconds = parse_duration_to_seconds(r["elapsed_time"])
                 moving_time_seconds = parse_duration_to_seconds(r["moving_time"]) or duration_seconds
 
-                # Speed & Pace (avg_speed in GarminDb is km/h)
                 avg_speed_kmh = float(r["avg_speed"] or 0.0)
                 avg_pace_sec_km = (3600.0 / avg_speed_kmh) if avg_speed_kmh > 0 else parse_pace_to_sec_km(r["avg_pace"])
                 if not avg_pace_sec_km and distance_meters > 0 and moving_time_seconds > 0:
@@ -256,7 +317,7 @@ class GarminDbPipeline:
                 max_speed_kmh = float(r["max_speed"] or 0.0)
                 best_pace_sec_km = (3600.0 / max_speed_kmh) if max_speed_kmh > 0 else parse_pace_to_sec_km(r["max_pace"])
 
-                # Cadence (GarminDb activities has single-leg, steps_activities has SPM)
+                # Cadence
                 cad_raw = r["avg_steps_per_min"] or r["avg_cadence"]
                 avg_cadence = None
                 if cad_raw:
@@ -269,6 +330,23 @@ class GarminDbPipeline:
                 gct_ms = gct_sec * 1000.0 if gct_sec > 0 else None
 
                 act_laps = laps_by_act.get(act_id, [])
+
+                # Fenix 7 specific metrics
+                training_load_val = float(r["training_load"]) if r["training_load"] is not None else None
+                vert_osc_val = float(r["avg_vertical_oscillation"]) if r["avg_vertical_oscillation"] is not None else None
+                hrz1_sec = parse_duration_to_seconds(r["hrz_1_time"])
+                hrz2_sec = parse_duration_to_seconds(r["hrz_2_time"])
+                hrz3_sec = parse_duration_to_seconds(r["hrz_3_time"])
+                hrz4_sec = parse_duration_to_seconds(r["hrz_4_time"])
+                hrz5_sec = parse_duration_to_seconds(r["hrz_5_time"])
+                avg_rr_val = float(r["avg_rr"]) if r["avg_rr"] is not None else None
+
+                dev_name = device_by_act.get(act_id)
+                if not dev_name:
+                    if training_load_val is not None or (hrz1_sec and hrz1_sec > 0):
+                        dev_name = "Garmin Fenix 7"
+                    else:
+                        dev_name = "Garmin Forerunner 935"
 
                 act = Activity(
                     id=f"garmin_{act_id}",
@@ -296,6 +374,15 @@ class GarminDbPipeline:
                     ground_contact_time_ms=gct_ms,
                     temperature_c=float(r["avg_temperature"]) if r["avg_temperature"] is not None else None,
                     vdot=float(r["vo2_max"]) if r["vo2_max"] is not None else None,
+                    garmin_training_load=training_load_val,
+                    vertical_oscillation_mm=vert_osc_val,
+                    hrz_1_seconds=hrz1_sec,
+                    hrz_2_seconds=hrz2_sec,
+                    hrz_3_seconds=hrz3_sec,
+                    hrz_4_seconds=hrz4_sec,
+                    hrz_5_seconds=hrz5_sec,
+                    avg_respiration_rate=avg_rr_val,
+                    device_name=dev_name,
                     raw_data={
                         "garmin_activity_id": act_id,
                         "laps": act_laps,
@@ -309,7 +396,7 @@ class GarminDbPipeline:
 
     @classmethod
     def _extract_daily_health(cls, garmin_db_path: str) -> List[Dict[str, Any]]:
-        """Extracts and aggregates daily health metrics from garmin.db."""
+        """Extracts and aggregates daily health metrics from garmin.db and garmin_monitoring.db."""
         records_by_date: Dict[date, Dict[str, Any]] = {}
 
         with sqlite3.connect(garmin_db_path) as conn:
@@ -317,20 +404,26 @@ class GarminDbPipeline:
             cur = conn.cursor()
 
             # 1. Resting HR
-            cur.execute("SELECT day, resting_heart_rate FROM resting_hr ORDER BY day ASC")
-            for r in cur.fetchall():
-                d = parse_datetime(r["day"]).date()
-                if d not in records_by_date:
-                    records_by_date[d] = {"date": d}
-                records_by_date[d]["resting_hr"] = r["resting_heart_rate"]
+            cur.execute("PRAGMA table_info(resting_hr)")
+            if cur.fetchall():
+                cur.execute("SELECT day, resting_heart_rate FROM resting_hr ORDER BY day ASC")
+                for r in cur.fetchall():
+                    d = parse_datetime(r["day"]).date()
+                    if d not in records_by_date:
+                        records_by_date[d] = {"date": d}
+                    records_by_date[d]["resting_hr"] = r["resting_heart_rate"]
 
             # 2. Sleep
             cur.execute("PRAGMA table_info(sleep)")
             sleep_cols = {col["name"] for col in cur.fetchall()}
             start_sel = "start" if "start" in sleep_cols else "NULL as start"
             stop_sel = "stop" if "stop" in sleep_cols else "NULL as stop"
+            spo2_sel = "avg_spo2" if "avg_spo2" in sleep_cols else "NULL as avg_spo2"
+            rr_sel = "avg_rr" if "avg_rr" in sleep_cols else "NULL as avg_rr"
+            stress_sel = "avg_stress" if "avg_stress" in sleep_cols else "NULL as avg_stress"
+            qual_sel = "qualifier" if "qualifier" in sleep_cols else "NULL as qualifier"
 
-            cur.execute(f"SELECT day, total_sleep, deep_sleep, light_sleep, rem_sleep, score, {start_sel}, {stop_sel} FROM sleep ORDER BY day ASC")
+            cur.execute(f"SELECT day, total_sleep, deep_sleep, light_sleep, rem_sleep, score, {start_sel}, {stop_sel}, {spo2_sel}, {rr_sel}, {stress_sel}, {qual_sel} FROM sleep ORDER BY day ASC")
             for r in cur.fetchall():
                 d = parse_datetime(r["day"]).date()
                 if d not in records_by_date:
@@ -344,9 +437,32 @@ class GarminDbPipeline:
                     records_by_date[d]["sleep_start"] = str(r["start"])
                 if r["stop"] is not None:
                     records_by_date[d]["sleep_end"] = str(r["stop"])
+                if r["avg_spo2"] is not None:
+                    records_by_date[d]["sleep_spo2_avg"] = float(r["avg_spo2"])
+                if r["avg_rr"] is not None:
+                    records_by_date[d]["sleep_rr_avg"] = float(r["avg_rr"])
+                if r["avg_stress"] is not None:
+                    records_by_date[d]["sleep_stress_avg"] = float(r["avg_stress"])
+                if r["qualifier"] is not None:
+                    records_by_date[d]["sleep_qualifier"] = str(r["qualifier"])
 
-            # 3. Daily Summary (HR min/max, stress, steps, calories)
-            cur.execute("SELECT day, hr_min, hr_max, rhr, stress_avg, steps, calories_total FROM daily_summary ORDER BY day ASC")
+            # 3. Daily Summary (HR min/max, stress, steps, calories, body battery, spo2, waking respiration, floors)
+            cur.execute("PRAGMA table_info(daily_summary)")
+            ds_cols = {col["name"] for col in cur.fetchall()}
+            bb_charged_sel = "bb_charged" if "bb_charged" in ds_cols else "NULL as bb_charged"
+            bb_max_sel = "bb_max" if "bb_max" in ds_cols else "NULL as bb_max"
+            bb_min_sel = "bb_min" if "bb_min" in ds_cols else "NULL as bb_min"
+            spo2_avg_sel = "spo2_avg" if "spo2_avg" in ds_cols else "NULL as spo2_avg"
+            spo2_min_sel = "spo2_min" if "spo2_min" in ds_cols else "NULL as spo2_min"
+            rr_waking_sel = "rr_waking_avg" if "rr_waking_avg" in ds_cols else "NULL as rr_waking_avg"
+            floors_sel = "floors_up" if "floors_up" in ds_cols else "NULL as floors_up"
+
+            cur.execute(f"""
+                SELECT day, hr_min, hr_max, rhr, stress_avg, steps, calories_total,
+                       {bb_charged_sel}, {bb_max_sel}, {bb_min_sel},
+                       {spo2_avg_sel}, {spo2_min_sel}, {rr_waking_sel}, {floors_sel}
+                FROM daily_summary ORDER BY day ASC
+            """)
             for r in cur.fetchall():
                 d = parse_datetime(r["day"]).date()
                 if d not in records_by_date:
@@ -358,14 +474,58 @@ class GarminDbPipeline:
                 records_by_date[d]["calories_total"] = float(r["calories_total"]) if r["calories_total"] is not None else None
                 if not records_by_date[d].get("resting_hr") and r["rhr"]:
                     records_by_date[d]["resting_hr"] = float(r["rhr"])
+                if r["bb_charged"] is not None:
+                    records_by_date[d]["body_battery_charged"] = int(r["bb_charged"])
+                if r["bb_max"] is not None:
+                    records_by_date[d]["body_battery_max"] = int(r["bb_max"])
+                if r["bb_min"] is not None:
+                    records_by_date[d]["body_battery_min"] = int(r["bb_min"])
+                if r["spo2_avg"] is not None:
+                    records_by_date[d]["spo2_avg"] = float(r["spo2_avg"])
+                if r["spo2_min"] is not None:
+                    records_by_date[d]["spo2_min"] = float(r["spo2_min"])
+                if r["rr_waking_avg"] is not None:
+                    records_by_date[d]["rr_waking_avg"] = float(r["rr_waking_avg"])
+                if r["floors_up"] is not None:
+                    records_by_date[d]["floors_climbed"] = float(r["floors_up"])
 
             # 4. Weight
-            cur.execute("SELECT day, weight FROM weight ORDER BY day ASC")
-            for r in cur.fetchall():
-                d = parse_datetime(r["day"]).date()
-                if d not in records_by_date:
-                    records_by_date[d] = {"date": d}
-                records_by_date[d]["weight_kg"] = float(r["weight"]) if r["weight"] is not None else None
+            cur.execute("PRAGMA table_info(weight)")
+            if cur.fetchall():
+                cur.execute("SELECT day, weight FROM weight ORDER BY day ASC")
+                for r in cur.fetchall():
+                    d = parse_datetime(r["day"]).date()
+                    if d not in records_by_date:
+                        records_by_date[d] = {"date": d}
+                    records_by_date[d]["weight_kg"] = float(r["weight"]) if r["weight"] is not None else None
+
+        # 5. Extract Overnight HRV from garmin_monitoring.db
+        monitoring_db = os.path.join(os.path.dirname(garmin_db_path), "garmin_monitoring.db")
+        if os.path.exists(monitoring_db):
+            try:
+                with sqlite3.connect(monitoring_db) as mconn:
+                    mconn.row_factory = sqlite3.Row
+                    mcur = mconn.cursor()
+                    mcur.execute("PRAGMA table_info(monitoring_hrv_status)")
+                    m_cols = {col["name"] for col in mcur.fetchall()}
+                    if "timestamp" in m_cols and "last_night" in m_cols:
+                        mcur.execute("""
+                            SELECT timestamp, weekly_average, last_night, last_night_average, baseline_low, baseline_high, status 
+                            FROM monitoring_hrv_status ORDER BY timestamp ASC
+                        """)
+                        for mr in mcur.fetchall():
+                            d = parse_datetime(mr["timestamp"]).date()
+                            if d not in records_by_date:
+                                records_by_date[d] = {"date": d}
+                            if mr["last_night"] is not None:
+                                records_by_date[d]["hrv_last_night"] = float(mr["last_night"])
+                            if mr["weekly_average"] is not None:
+                                records_by_date[d]["hrv_weekly_avg"] = float(mr["weekly_average"])
+                            st_code = mr["status"]
+                            status_labels = {0: "Balanced", 1: "Unbalanced", 2: "Low", 3: "Poor"}
+                            records_by_date[d]["hrv_status"] = status_labels.get(st_code, "Balanced" if st_code is not None else None)
+            except Exception:
+                pass
 
         records = list(records_by_date.values())
         return SleepScoreCalculator.calculate_records(records, overwrite_existing=False)

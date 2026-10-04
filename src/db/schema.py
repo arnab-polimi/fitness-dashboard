@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS activities (
     efficiency_factor REAL,
     aerobic_decoupling REAL,
     vdot REAL,
+    garmin_training_load REAL,
+    vertical_oscillation_mm REAL,
+    hrz_1_seconds REAL,
+    hrz_2_seconds REAL,
+    hrz_3_seconds REAL,
+    hrz_4_seconds REAL,
+    hrz_5_seconds REAL,
+    avg_respiration_rate REAL,
+    device_name TEXT,
     raw_data TEXT
 );
 """
@@ -63,6 +72,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     units TEXT,
     target_race_distance_km REAL,
     target_race_date TEXT,
+    auto_sync_baselines INTEGER DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
@@ -102,7 +112,21 @@ CREATE TABLE IF NOT EXISTS daily_health (
     weight_kg REAL,
     calories_total REAL,
     sleep_start TEXT,
-    sleep_end TEXT
+    sleep_end TEXT,
+    body_battery_charged INTEGER,
+    body_battery_max INTEGER,
+    body_battery_min INTEGER,
+    spo2_avg REAL,
+    spo2_min REAL,
+    rr_waking_avg REAL,
+    floors_climbed REAL,
+    sleep_spo2_avg REAL,
+    sleep_rr_avg REAL,
+    sleep_stress_avg REAL,
+    sleep_qualifier TEXT,
+    hrv_last_night REAL,
+    hrv_weekly_avg REAL,
+    hrv_status TEXT
 );
 """
 

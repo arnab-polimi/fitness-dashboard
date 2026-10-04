@@ -89,6 +89,7 @@ def render_import_view(
                             target_db=db_manager,
                             user_profile=user_profile,
                             db_dir=garmindb_path_input,
+                            update_profile_baselines=getattr(user_profile, "auto_sync_baselines", False),
                         )
                         st.success(
                             f"Garmin download and dashboard sync complete: {sync_res['activities_extracted']} activities, "
@@ -106,6 +107,7 @@ def render_import_view(
                         target_db=db_manager,
                         user_profile=user_profile,
                         db_dir=garmindb_path_input,
+                        update_profile_baselines=getattr(user_profile, "auto_sync_baselines", False),
                     )
                     st.success(
                         f"**GarminDb Sync Successful!** Ingested {sync_res['activities_extracted']} activities "

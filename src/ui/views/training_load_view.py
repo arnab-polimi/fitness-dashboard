@@ -13,6 +13,7 @@ from src.ui.charts import (
     plot_pmc_chart,
     plot_form_corridor_chart,
     plot_weekly_mileage_and_load,
+    plot_garmin_training_load_comparison,
     PLOT_LAYOUT_DARK,
 )
 from src.ui.icons import render_view_header
@@ -24,6 +25,7 @@ def render_training_load_view(
     daily_loads: List[DailyLoad],
     user_profile: UserProfile,
     daily_df: pd.DataFrame,
+    activities_df: Optional[pd.DataFrame] = None,
 ) -> None:
     render_view_header(
         title="Training Load & Performance Management Dynamics",
@@ -80,12 +82,23 @@ def render_training_load_view(
         df = df[df["date_dt"] >= cutoff]
 
     # 3. Tabbed Visual Analytics
-    tab_pmc, tab_form, tab_weekly, tab_monotony = st.tabs([
+    act_df = activities_df if activities_df is not None and not activities_df.empty else pd.DataFrame([a.to_dict() for a in activities]) if activities else pd.DataFrame()
+    has_garmin_load = "garmin_training_load" in act_df.columns and act_df["garmin_training_load"].notna().any()
+
+    tabs_list = [
         "Performance Management (PMC)",
         "Form & Readiness Corridor",
         "Weekly Volume & Progression",
         "Training Monotony & Strain",
-    ])
+    ]
+    if has_garmin_load:
+        tabs_list.append("Garmin Native EPOC Load")
+
+    rendered_tabs = st.tabs(tabs_list)
+    tab_pmc = rendered_tabs[0]
+    tab_form = rendered_tabs[1]
+    tab_weekly = rendered_tabs[2]
+    tab_monotony = rendered_tabs[3]
 
     with tab_pmc:
         st.plotly_chart(plot_pmc_chart(df), use_container_width=True)
@@ -142,6 +155,16 @@ def render_training_load_view(
         )
         fig_monotony.update_layout(layout)
         st.plotly_chart(fig_monotony, use_container_width=True)
+
+    if has_garmin_load:
+        tab_garmin = rendered_tabs[4]
+        with tab_garmin:
+            st.markdown("#### Garmin Fenix 7 Native EPOC Exercise Load")
+            st.caption(
+                "Garmin's Firstbeat engine calculates real-time Excess Post-Exercise Oxygen Consumption (EPOC) "
+                "from continuous cardiac deflection and respiration rate, measuring the true metabolic disturbance of every workout."
+            )
+            st.plotly_chart(plot_garmin_training_load_comparison(act_df), use_container_width=True)
 
     # 4. Educational & Physiological Mechanics
     with st.expander("Sports Science Guide: Banister TRIMP, hrTSS, CTL, ATL & TSB"):
