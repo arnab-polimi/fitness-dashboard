@@ -323,34 +323,82 @@ def apply_dark_theme():
             margin-top: 12px !important;
         }
 
-        /* Mobile Screen Responsiveness Optimizations (< 768px) */
+        /* Comprehensive Mobile & Tablet Responsiveness (< 768px) */
         @media (max-width: 768px) {
             .block-container {
-                padding-top: 1.5rem !important;
-                padding-bottom: 2.5rem !important;
-                padding-left: 0.35rem !important;
-                padding-right: 0.35rem !important;
+                padding-top: 1.0rem !important;
+                padding-bottom: 2.0rem !important;
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
                 max-width: 100vw !important;
+                box-sizing: border-box !important;
             }
             [data-testid="column"] {
                 width: 100% !important;
                 flex: 1 1 100% !important;
                 min-width: 100% !important;
-                margin-bottom: 6px !important;
+                margin-bottom: 8px !important;
             }
             .metric-card {
                 padding: 12px 14px !important;
                 margin-bottom: 8px !important;
             }
             .metric-value {
-                font-size: 1.38rem !important;
+                font-size: 1.35rem !important;
             }
+            .metric-label {
+                font-size: 0.72rem !important;
+            }
+            /* Horizontally scrollable tabs with smooth touch */
+            .stTabs [data-baseweb="tab-list"] {
+                overflow-x: auto !important;
+                flex-wrap: nowrap !important;
+                white-space: nowrap !important;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 4px !important;
+            }
+            .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+                display: none;
+            }
+            .stTabs [data-baseweb="tab"] {
+                padding: 6px 12px !important;
+                font-size: 0.82rem !important;
+            }
+            /* Responsive tables and dataframes */
+            [data-testid="stDataFrame"], [data-testid="stTable"] {
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            /* Sleep card telemetry grid on mobile */
+            .sleep-telemetry-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+            }
+            /* Charts responsive wrapper */
             .stPlotlyChart {
                 width: 100% !important;
-                min-width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: hidden !important;
             }
             .js-plotly-plot, .plot-container {
                 width: 100% !important;
+                max-width: 100% !important;
+            }
+            /* Prevent banner badge clipping */
+            .badge {
+                font-size: 0.68rem !important;
+                padding: 3px 8px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sleep-telemetry-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .metric-value {
+                font-size: 1.25rem !important;
             }
         }
     </style>

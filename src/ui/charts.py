@@ -1427,14 +1427,21 @@ def plot_hrv_status_chart(health_df: pd.DataFrame) -> go.Figure:
 
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
-        title="<b>Overnight HRV Status & Baseline Corridor (Garmin Fenix 7)</b>",
+        title=dict(
+            text="<b>Overnight HRV Status & Baseline Corridor (Garmin Fenix 7)</b>",
+            x=0.01,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=13.5, color="#f0e2a3"),
+        ),
         yaxis_title="HRV rMSSD (ms)",
-        height=340,
-        margin=dict(l=28, r=15, t=55, b=35),
+        height=360,
+        margin=dict(l=35, r=15, t=55, b=60),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.04,
+            yanchor="top",
+            y=-0.20,
             xanchor="center",
             x=0.5,
             font=dict(size=9.5),
@@ -1504,15 +1511,22 @@ def plot_body_battery_chart(health_df: pd.DataFrame) -> go.Figure:
 
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
-        title="<b>Body Battery™ Dynamics: Overnight Recharge & Day Drain</b>",
+        title=dict(
+            text="<b>Body Battery™ Dynamics: Overnight Recharge & Day Drain</b>",
+            x=0.01,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=13.5, color="#f0e2a3"),
+        ),
         yaxis_title="Body Battery (0-100)",
         yaxis=dict(range=[0, 105]),
-        height=340,
-        margin=dict(l=28, r=15, t=55, b=35),
+        height=360,
+        margin=dict(l=35, r=15, t=55, b=60),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.04,
+            yanchor="top",
+            y=-0.20,
             xanchor="center",
             x=0.5,
             font=dict(size=9.5),
@@ -1711,17 +1725,28 @@ def plot_garmin_hr_zones_breakdown(activities_df: pd.DataFrame) -> go.Figure:
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
         barmode="stack",
-        title="<b>Fenix 7 Measured Time in Heart Rate Zones (Z1 - Z5)</b>",
+        title=dict(
+            text="<b>Fenix 7 Measured Time in Heart Rate Zones (Z1 - Z5)</b>",
+            x=0.01,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=13.5, color="#f0e2a3"),
+        ),
         xaxis_title="Time in Zone (Minutes)",
-        height=360,
-        margin=dict(l=140, r=15, t=55, b=35),
+        yaxis=dict(
+            automargin=True,
+            tickfont=dict(size=10, color="#c8b99c"),
+        ),
+        height=380,
+        margin=dict(l=10, r=20, t=55, b=65),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.04,
+            yanchor="top",
+            y=-0.22,
             xanchor="center",
             x=0.5,
-            font=dict(size=9.0),
+            font=dict(size=9.5),
         ),
     )
     fig.update_layout(layout)
@@ -1764,14 +1789,21 @@ def plot_garmin_training_load_comparison(activities_df: pd.DataFrame) -> go.Figu
 
     layout = dict(PLOT_LAYOUT_DARK)
     layout.update(
-        title="<b>Garmin Fenix 7 EPOC Exercise Load vs Calculated TSS</b>",
+        title=dict(
+            text="<b>Garmin Fenix 7 EPOC Exercise Load vs Calculated TSS</b>",
+            x=0.01,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=13.5, color="#f0e2a3"),
+        ),
         yaxis_title="Training Load / Stress Units",
-        height=320,
-        margin=dict(l=28, r=15, t=55, b=35),
+        height=350,
+        margin=dict(l=45, r=40, t=55, b=60),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.04,
+            yanchor="top",
+            y=-0.20,
             xanchor="center",
             x=0.5,
             font=dict(size=9.5),

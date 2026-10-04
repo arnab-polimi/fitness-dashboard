@@ -572,67 +572,67 @@ def render_sleep_ui_card(
         </div>
 
         <!-- Stage Breakdown Legend Row -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.95rem; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 9px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #32388C; display: inline-block; box-shadow: 0 0 6px rgba(50, 56, 140, 0.6);"></span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 0.92rem; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 11px; height: 11px; border-radius: 50%; background: #32388C; display: inline-block; box-shadow: 0 0 6px rgba(50, 56, 140, 0.6);"></span>
                 <span style="color: #8F9CAE; font-weight: 500;">Deep</span>
                 <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{deep_str}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 9px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #5D70F5; display: inline-block; box-shadow: 0 0 6px rgba(93, 112, 245, 0.6);"></span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 11px; height: 11px; border-radius: 50%; background: #5D70F5; display: inline-block; box-shadow: 0 0 6px rgba(93, 112, 245, 0.6);"></span>
                 <span style="color: #8F9CAE; font-weight: 500;">Light</span>
                 <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{light_str}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 9px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #BA78F8; display: inline-block; box-shadow: 0 0 6px rgba(186, 120, 248, 0.6);"></span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 11px; height: 11px; border-radius: 50%; background: #BA78F8; display: inline-block; box-shadow: 0 0 6px rgba(186, 120, 248, 0.6);"></span>
                 <span style="color: #8F9CAE; font-weight: 500;">REM</span>
                 <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{rem_str}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 9px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #C3D2F7; display: inline-block; box-shadow: 0 0 6px rgba(195, 210, 247, 0.6);"></span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="width: 11px; height: 11px; border-radius: 50%; background: #C3D2F7; display: inline-block; box-shadow: 0 0 6px rgba(195, 210, 247, 0.6);"></span>
                 <span style="color: #8F9CAE; font-weight: 500;">Awake</span>
                 <span style="color: #ffffff; font-weight: 700; margin-left: 2px;">{awake_str}</span>
             </div>
         </div>
 
         <!-- Telemetry Footer: Resting HR | Overnight HRV | SpO2 | Sleep Score -->
-        <div style="border-top: 1px solid #232c42; padding-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: left;">
-            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-right: 8px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="sleep-telemetry-grid" style="border-top: 1px solid #232c42; padding-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); text-align: left; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.02); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>
                 <div>
-                    <div style="font-size: 1.45rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{rhr_val}</div>
-                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Resting HR</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{rhr_val}</div>
+                    <div style="font-size: 0.70rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Resting HR</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-left: 12px; padding-right: 8px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c1d37f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.02); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c1d37f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                 </svg>
                 <div>
-                    <div style="font-size: 1.45rem; font-weight: 800; color: #c1d37f; line-height: 1.1;">{hrv_val}</div>
-                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Overnight HRV</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #c1d37f; line-height: 1.1;">{hrv_val}</div>
+                    <div style="font-size: 0.70rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Overnight HRV</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-left: 12px; padding-right: 8px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.02); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                 </svg>
                 <div>
-                    <div style="font-size: 1.45rem; font-weight: 800; color: #38bdf8; line-height: 1.1;">{spo2_val}</div>
-                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Pulse Ox (SpO2)</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #38bdf8; line-height: 1.1;">{spo2_val}</div>
+                    <div style="font-size: 0.70rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Pulse Ox (SpO2)</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; padding-left: 12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#BA78F8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.02); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BA78F8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
                     <line x1="23" y1="11" x2="23" y2="13"></line>
                     <rect x="3" y="8" width="12" height="8" rx="1" fill="#7879F1"></rect>
                 </svg>
                 <div>
-                    <div style="font-size: 1.45rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{score_val}</div>
-                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Sleep Score</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{score_val}</div>
+                    <div style="font-size: 0.70rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Sleep Score</div>
                 </div>
             </div>
         </div>

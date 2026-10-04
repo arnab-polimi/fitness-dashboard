@@ -24,7 +24,6 @@ from src.ui.components import (
 from src.ui.charts import (
     plot_pmc_chart,
     plot_weekly_mileage_and_load,
-    plot_fenix_running_dynamics_chart,
     plot_garmin_hr_zones_breakdown,
     plot_hrv_status_chart,
     plot_body_battery_chart,
@@ -208,17 +207,17 @@ def render_overview_view(
         st.markdown(
             f"""
             <div style="background: linear-gradient(135deg, rgba(193,211,127,0.12) 0%, rgba(56,189,248,0.08) 100%);
-                        border: 1px solid rgba(193,211,127,0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 20px;
-                        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.25);">
-                <div style="display: flex; align-items: center;">
+                        border: 1px solid rgba(193,211,127,0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+                        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);">
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
                     {fenix_icon}
                     <div>
                         <span style="font-weight: 700; color: #f0e2a3; font-size: 0.92rem;">Hardware Synchronized: Garmin Fenix 7</span>
-                        <span style="color: #94a3b8; font-size: 0.78rem; margin-left: 10px;">• Elevate v4 Optical Sensor • Overnight HRV • Native EPOC Load • Running Dynamics</span>
+                        <div style="color: #94a3b8; font-size: 0.78rem; margin-top: 2px;">• Elevate v4 Sensor • Overnight HRV • Native EPOC Load • Running Dynamics</div>
                     </div>
                 </div>
                 <div>
-                    <span class="badge" style="background: rgba(193,211,127,0.2); color: #c1d37f; border: 1px solid #c1d37f; font-size: 0.72rem; padding: 3px 10px;">
+                    <span class="badge" style="background: rgba(193,211,127,0.2); color: #c1d37f; border: 1px solid #c1d37f; font-size: 0.72rem; padding: 4px 12px; white-space: nowrap;">
                         PRIMARY TRACKER ACTIVE
                     </span>
                 </div>
@@ -350,12 +349,8 @@ def render_overview_view(
                 delta_type="pos",
             )
 
-        # Visual charts for zones and dynamics
-        zc1, zc2 = st.columns(2)
-        with zc1:
-            st.plotly_chart(plot_garmin_hr_zones_breakdown(activities_df), use_container_width=True)
-        with zc2:
-            st.plotly_chart(plot_fenix_running_dynamics_chart(activities_df), use_container_width=True)
+        # Visual chart for measured heart rate zones (full width & responsive)
+        st.plotly_chart(plot_garmin_hr_zones_breakdown(activities_df), use_container_width=True)
 
     # 6. Fitness Age & Physiological Pattern Recognizer
     fa_report = FitnessAgeEngine.calculate_fitness_age(
