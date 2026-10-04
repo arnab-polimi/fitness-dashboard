@@ -48,6 +48,17 @@ class Activity:
     aerobic_decoupling: Optional[float] = None  # Decoupling % drift (Pa:HR)
     vdot: Optional[float] = None  # Estimated Jack Daniels VDOT
 
+    # Garmin Fenix 7 Metrics
+    garmin_training_load: Optional[float] = None  # EPOC Exercise Load
+    vertical_oscillation_mm: Optional[float] = None  # Bounce in mm
+    hrz_1_seconds: Optional[float] = None  # Warm up / Recovery (Z1)
+    hrz_2_seconds: Optional[float] = None  # Easy / Aerobic Base (Z2)
+    hrz_3_seconds: Optional[float] = None  # Aerobic / Tempo (Z3)
+    hrz_4_seconds: Optional[float] = None  # Threshold (Z4)
+    hrz_5_seconds: Optional[float] = None  # Anaerobic / Max (Z5)
+    avg_respiration_rate: Optional[float] = None  # Workout breaths/min
+    device_name: Optional[str] = None  # 'Garmin Fenix 7', etc.
+
     @property
     def distance_km(self) -> float:
         return self.distance_meters / 1000.0
@@ -145,6 +156,15 @@ class Activity:
             "efficiency_factor": self.efficiency_factor,
             "aerobic_decoupling": self.aerobic_decoupling,
             "vdot": self.vdot,
+            "garmin_training_load": self.garmin_training_load,
+            "vertical_oscillation_mm": self.vertical_oscillation_mm,
+            "hrz_1_seconds": self.hrz_1_seconds,
+            "hrz_2_seconds": self.hrz_2_seconds,
+            "hrz_3_seconds": self.hrz_3_seconds,
+            "hrz_4_seconds": self.hrz_4_seconds,
+            "hrz_5_seconds": self.hrz_5_seconds,
+            "avg_respiration_rate": self.avg_respiration_rate,
+            "device_name": self.device_name,
             "distance_km": self.distance_km,
             "speed_kmh": self.speed_kmh,
         }
@@ -196,4 +216,13 @@ class Activity:
             efficiency_factor=float(d["efficiency_factor"]) if d.get("efficiency_factor") is not None else None,
             aerobic_decoupling=float(d["aerobic_decoupling"]) if d.get("aerobic_decoupling") is not None else None,
             vdot=float(d["vdot"]) if d.get("vdot") is not None else None,
+            garmin_training_load=float(d["garmin_training_load"]) if d.get("garmin_training_load") is not None else None,
+            vertical_oscillation_mm=float(d["vertical_oscillation_mm"]) if d.get("vertical_oscillation_mm") is not None else None,
+            hrz_1_seconds=float(d["hrz_1_seconds"]) if d.get("hrz_1_seconds") is not None else None,
+            hrz_2_seconds=float(d["hrz_2_seconds"]) if d.get("hrz_2_seconds") is not None else None,
+            hrz_3_seconds=float(d["hrz_3_seconds"]) if d.get("hrz_3_seconds") is not None else None,
+            hrz_4_seconds=float(d["hrz_4_seconds"]) if d.get("hrz_4_seconds") is not None else None,
+            hrz_5_seconds=float(d["hrz_5_seconds"]) if d.get("hrz_5_seconds") is not None else None,
+            avg_respiration_rate=float(d["avg_respiration_rate"]) if d.get("avg_respiration_rate") is not None else None,
+            device_name=d.get("device_name"),
         )

@@ -52,10 +52,49 @@ class DatabaseManager:
             # Ensure columns exist if daily_health table was created earlier
             cursor.execute("PRAGMA table_info(daily_health)")
             dh_cols = {col[1] for col in cursor.fetchall()}
-            if "sleep_start" not in dh_cols:
-                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_start TEXT")
-            if "sleep_end" not in dh_cols:
-                cursor.execute("ALTER TABLE daily_health ADD COLUMN sleep_end TEXT")
+            dh_new_cols = [
+                ("sleep_start", "TEXT"),
+                ("sleep_end", "TEXT"),
+                ("body_battery_charged", "INTEGER"),
+                ("body_battery_max", "INTEGER"),
+                ("body_battery_min", "INTEGER"),
+                ("spo2_avg", "REAL"),
+                ("spo2_min", "REAL"),
+                ("rr_waking_avg", "REAL"),
+                ("floors_climbed", "REAL"),
+                ("sleep_spo2_avg", "REAL"),
+                ("sleep_rr_avg", "REAL"),
+                ("sleep_stress_avg", "REAL"),
+                ("sleep_qualifier", "TEXT"),
+                ("hrv_last_night", "REAL"),
+                ("hrv_weekly_avg", "REAL"),
+                ("hrv_status", "TEXT"),
+            ]
+            for col_name, col_type in dh_new_cols:
+                if col_name not in dh_cols:
+                    cursor.execute(f"ALTER TABLE daily_health ADD COLUMN {col_name} {col_type}")
+
+            cursor.execute("PRAGMA table_info(activities)")
+            act_cols = {col[1] for col in cursor.fetchall()}
+            act_new_cols = [
+                ("garmin_training_load", "REAL"),
+                ("vertical_oscillation_mm", "REAL"),
+                ("hrz_1_seconds", "REAL"),
+                ("hrz_2_seconds", "REAL"),
+                ("hrz_3_seconds", "REAL"),
+                ("hrz_4_seconds", "REAL"),
+                ("hrz_5_seconds", "REAL"),
+                ("avg_respiration_rate", "REAL"),
+                ("device_name", "TEXT"),
+            ]
+            for col_name, col_type in act_new_cols:
+                if col_name not in act_cols:
+                    cursor.execute(f"ALTER TABLE activities ADD COLUMN {col_name} {col_type}")
+
+            cursor.execute("PRAGMA table_info(user_profiles)")
+            up_cols = {col[1] for col in cursor.fetchall()}
+            if "auto_sync_baselines" not in up_cols:
+                cursor.execute("ALTER TABLE user_profiles ADD COLUMN auto_sync_baselines INTEGER DEFAULT 0")
 
             cursor.execute(SCHEDULED_WORKOUTS_TABLE_SCHEMA)
             for idx_sql in SCHEDULED_WORKOUTS_INDEXES:
@@ -73,7 +112,10 @@ class DatabaseManager:
             avg_power_watts, calories, aerobic_te, anaerobic_te,
             stride_length_m, vertical_ratio, ground_contact_time_ms,
             temperature_c, feeling, rpe, notes, trimp, tss,
-            intensity_factor, efficiency_factor, aerobic_decoupling, vdot, raw_data
+            intensity_factor, efficiency_factor, aerobic_decoupling, vdot,
+            garmin_training_load, vertical_oscillation_mm,
+            hrz_1_seconds, hrz_2_seconds, hrz_3_seconds, hrz_4_seconds, hrz_5_seconds,
+            avg_respiration_rate, device_name, raw_data
         ) VALUES (
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?,
@@ -82,7 +124,10 @@ class DatabaseManager:
             ?, ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?
         )
         """
         start_time_str = activity.start_time.isoformat() if isinstance(activity.start_time, datetime) else str(activity.start_time)
@@ -123,6 +168,15 @@ class DatabaseManager:
             activity.efficiency_factor,
             activity.aerobic_decoupling,
             activity.vdot,
+            activity.garmin_training_load,
+            activity.vertical_oscillation_mm,
+            activity.hrz_1_seconds,
+            activity.hrz_2_seconds,
+            activity.hrz_3_seconds,
+            activity.hrz_4_seconds,
+            activity.hrz_5_seconds,
+            activity.avg_respiration_rate,
+            activity.device_name,
             raw_json,
         )
 
@@ -145,7 +199,10 @@ class DatabaseManager:
             avg_power_watts, calories, aerobic_te, anaerobic_te,
             stride_length_m, vertical_ratio, ground_contact_time_ms,
             temperature_c, feeling, rpe, notes, trimp, tss,
-            intensity_factor, efficiency_factor, aerobic_decoupling, vdot, raw_data
+            intensity_factor, efficiency_factor, aerobic_decoupling, vdot,
+            garmin_training_load, vertical_oscillation_mm,
+            hrz_1_seconds, hrz_2_seconds, hrz_3_seconds, hrz_4_seconds, hrz_5_seconds,
+            avg_respiration_rate, device_name, raw_data
         ) VALUES (
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?,
@@ -154,7 +211,10 @@ class DatabaseManager:
             ?, ?, ?, ?,
             ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?
         )
         """
         rows = []
@@ -196,6 +256,15 @@ class DatabaseManager:
                 act.efficiency_factor,
                 act.aerobic_decoupling,
                 act.vdot,
+                act.garmin_training_load,
+                act.vertical_oscillation_mm,
+                act.hrz_1_seconds,
+                act.hrz_2_seconds,
+                act.hrz_3_seconds,
+                act.hrz_4_seconds,
+                act.hrz_5_seconds,
+                act.avg_respiration_rate,
+                act.device_name,
                 raw_json,
             ))
 
@@ -306,17 +375,21 @@ class DatabaseManager:
             cursor.execute("DELETE FROM daily_health")
             conn.commit()
 
-    def save_user_profile(self, profile: UserProfile) -> None:
-        """Saves user profile."""
+    def get_profile_backup_path(self) -> str:
+        """Path to persistent JSON backup for athlete profile."""
+        return os.path.join(os.path.dirname(os.path.abspath(self.db_path)), "athlete_profile.json")
+
+    def _save_user_profile_to_db(self, profile: UserProfile) -> None:
+        """Internal helper to save user profile directly to SQLite table."""
         sql = """
         INSERT OR REPLACE INTO user_profiles (
             user_id, name, gender, age, weight_kg, resting_hr, max_hr,
             lthr, threshold_pace_sec_km, ftp_watts, units,
-            target_race_distance_km, target_race_date, updated_at
+            target_race_distance_km, target_race_date, auto_sync_baselines, updated_at
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?, CURRENT_TIMESTAMP
+            ?, ?, ?, CURRENT_TIMESTAMP
         )
         """
         with self.get_connection() as conn:
@@ -335,17 +408,56 @@ class DatabaseManager:
                 profile.units,
                 profile.target_race_distance_km,
                 profile.target_race_date,
+                1 if getattr(profile, "auto_sync_baselines", False) else 0,
             ))
             conn.commit()
 
+    def save_user_profile(self, profile: UserProfile) -> None:
+        """Saves user profile to SQLite and creates a persistent JSON backup."""
+        self._save_user_profile_to_db(profile)
+        try:
+            backup_path = self.get_profile_backup_path()
+            with open(backup_path, "w", encoding="utf-8") as f:
+                json.dump(profile.to_dict(), f, indent=2)
+        except Exception:
+            pass
+
     def get_user_profile(self, user_id: str = "default_user") -> UserProfile:
-        """Fetches user profile or returns default."""
+        """Fetches user profile, prioritizing persistent athlete_profile.json backup to survive DB refreshes."""
+        backup_path = self.get_profile_backup_path()
+        file_profile = None
+        if os.path.exists(backup_path):
+            try:
+                with open(backup_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and data.get("user_id") == user_id:
+                        file_profile = UserProfile.from_dict(data)
+            except Exception:
+                file_profile = None
+
+        db_profile = None
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM user_profiles WHERE user_id = ?", (user_id,))
             row = cursor.fetchone()
             if row:
-                return UserProfile.from_dict(dict(row))
+                db_profile = UserProfile.from_dict(dict(row))
+
+        if file_profile:
+            # If SQLite DB was replaced or lacks changes, synchronize SQLite DB with JSON backup
+            if not db_profile or db_profile != file_profile:
+                self._save_user_profile_to_db(file_profile)
+            return file_profile
+
+        if db_profile:
+            # Seed the JSON backup from existing DB record
+            try:
+                with open(backup_path, "w", encoding="utf-8") as f:
+                    json.dump(db_profile.to_dict(), f, indent=2)
+            except Exception:
+                pass
+            return db_profile
+
         default_prof = UserProfile(user_id=user_id)
         self.save_user_profile(default_prof)
         return default_prof
@@ -408,8 +520,21 @@ class DatabaseManager:
             date, resting_hr, hr_min, hr_max, stress_avg,
             steps, sleep_duration_seconds, deep_sleep_seconds,
             light_sleep_seconds, rem_sleep_seconds, sleep_score,
-            weight_kg, calories_total, sleep_start, sleep_end
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            weight_kg, calories_total, sleep_start, sleep_end,
+            body_battery_charged, body_battery_max, body_battery_min,
+            spo2_avg, spo2_min, rr_waking_avg, floors_climbed,
+            sleep_spo2_avg, sleep_rr_avg, sleep_stress_avg, sleep_qualifier,
+            hrv_last_night, hrv_weekly_avg, hrv_status
+        ) VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?
+        )
         """
         rows = []
         for r in records:
@@ -430,6 +555,20 @@ class DatabaseManager:
                 r.get("calories_total"),
                 r.get("sleep_start"),
                 r.get("sleep_end"),
+                r.get("body_battery_charged"),
+                r.get("body_battery_max"),
+                r.get("body_battery_min"),
+                r.get("spo2_avg"),
+                r.get("spo2_min"),
+                r.get("rr_waking_avg"),
+                r.get("floors_climbed"),
+                r.get("sleep_spo2_avg"),
+                r.get("sleep_rr_avg"),
+                r.get("sleep_stress_avg"),
+                r.get("sleep_qualifier"),
+                r.get("hrv_last_night"),
+                r.get("hrv_weekly_avg"),
+                r.get("hrv_status"),
             ))
 
         with self.get_connection() as conn:

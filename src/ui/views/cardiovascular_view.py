@@ -14,6 +14,8 @@ from src.ui.charts import (
     plot_efficiency_factor_trend,
     plot_hr_zones_distribution,
     plot_recovery_telemetry_chart,
+    plot_garmin_hr_zones_breakdown,
+    plot_fenix_running_dynamics_chart,
     PLOT_LAYOUT_DARK,
 )
 from src.ui.icons import render_view_header, render_section_header
@@ -54,7 +56,21 @@ def render_cardiovascular_view(
         with col2:
             st.plotly_chart(plot_efficiency_factor_trend(daily_df), use_container_width=True)
 
-        # Bottom Row: Aerobic Decoupling and HR Zones
+        # Fenix 7 Native Heart Rate Zones & Biomechanical Dynamics
+        has_fenix_metrics = (
+            ("hrz_1_seconds" in activities_df.columns and activities_df["hrz_1_seconds"].notna().any()) or
+            ("vertical_oscillation_mm" in activities_df.columns and activities_df["vertical_oscillation_mm"].notna().any())
+        )
+        if has_fenix_metrics:
+            render_section_header("Garmin Fenix 7 Heart Rate Zones & Running Dynamics", icon_name="running")
+            fc1, fc2 = st.columns(2)
+            with fc1:
+                st.plotly_chart(plot_garmin_hr_zones_breakdown(activities_df), use_container_width=True)
+            with fc2:
+                st.plotly_chart(plot_fenix_running_dynamics_chart(activities_df), use_container_width=True)
+
+        # Bottom Row: Aerobic Decoupling and Calculated HR Zones
+        render_section_header("Cardiac Drift & Intensity Zone Distribution", icon_name="heartbeat")
         col3, col4 = st.columns(2)
         with col3:
             long_runs = activities_df[
@@ -99,12 +115,17 @@ def render_cardiovascular_view(
             st.plotly_chart(plot_hr_zones_distribution(activities_df, user_profile), use_container_width=True)
 
     # Educational Expander
-    with st.expander("Deep Dive: Efficiency Factor (EF) and Aerobic Decoupling (Pw:HR)"):
+    with st.expander("Deep Dive: Fenix 7 Running Dynamics & Aerobic Efficiency"):
         st.markdown("""
-        - **Efficiency Factor (EF)**: Calculated as $\\text{Speed (m/min)} / \\text{Average HR (bpm)}$.
-          - As your aerobic base deepens and stroke volume increases, EF goes up (you run faster at the same heart rate).
-        - **Aerobic Decoupling (Pw:HR / Pa:HR)**:
-          - Measures whether your heart rate rises while pace stays steady in the second half of a workout.
-          - **< 5.0% Decoupling**: Excellent aerobic stamina and fat-burning economy.
-          - **> 5.0% Decoupling**: Indicates cardiac drift caused by incomplete aerobic development, high ambient heat, or dehydration.
+        - **Vertical Oscillation (VO)**: The vertical bounce of your torso while running (measured in millimeters).
+          - **Typical range**: 60 - 90 mm. Lower vertical oscillation means less wasted upward kinetic energy and more forward propulsion.
+        - **Vertical Ratio (VR)**: The cost of bounce relative to your stride length ($VO / \\text{Stride Length} \\times 100$).
+          - **< 8.0%**: World-class running economy.
+          - **8.0% – 9.5%**: Excellent running efficiency.
+          - **> 10.0%**: Indicates excessive upward bounce or overstriding.
+        - **Ground Contact Time (GCT)**: The time your foot spends planted on the ground per stride (measured in milliseconds).
+          - **< 240 ms**: Rapid sprint/interval foot turnover.
+          - **240 – 280 ms**: Strong aerobic distance running cadence.
+        - **Efficiency Factor (EF)**: Speed (m/min) per heartbeat. Increases as mitochondrial density and stroke volume develop.
+        - **Aerobic Decoupling (Pw:HR)**: Cardiac drift during steady-pace long runs. Target **< 5.0%** for robust aerobic durability.
         """)

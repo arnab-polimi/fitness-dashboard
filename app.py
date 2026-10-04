@@ -32,6 +32,7 @@ from src.ui.views import (
     render_injury_risk_view,
     render_insights_view,
     render_race_predictor_view,
+    render_activity_log_view,
     render_import_view,
     render_settings_view,
     render_walking_view,
@@ -67,6 +68,7 @@ def init_state():
                     sync_result = GarminDbPipeline.sync_all(
                         st.session_state.db_manager,
                         st.session_state.user_profile,
+                        update_profile_baselines=getattr(st.session_state.user_profile, "auto_sync_baselines", False),
                     )
                     auto_sync_status = {
                         "status": "success",
@@ -86,6 +88,7 @@ def init_state():
                 sync_result = GarminDbPipeline.sync_all(
                     st.session_state.db_manager,
                     st.session_state.user_profile,
+                    update_profile_baselines=getattr(st.session_state.user_profile, "auto_sync_baselines", False),
                 )
                 auto_sync_status = {
                     "status": "offline_import",
@@ -370,6 +373,7 @@ with st.sidebar:
             "Training Stress & Risk",
             "Fitness Insights & Analysis",
             "Race Predictor & VDOT",
+            "Activity Log & Inspector",
             "Data Import & Sync",
             "Athlete Settings",
         ]
@@ -406,6 +410,7 @@ with st.sidebar:
             "Multi-Sport Overview",
             "Training Plan",
             "Sleep & Recovery Intelligence",
+            "Activity Log & Inspector",
             "Data Import & Sync",
             "Athlete Settings",
         ]
@@ -440,7 +445,7 @@ elif nav_selection == "Training Plan":
     render_training_plan_view(db)
 
 elif nav_selection == "Training Load & PMC":
-    render_training_load_view(activities, daily_loads, user_profile, daily_df)
+    render_training_load_view(activities, daily_loads, user_profile, daily_df, activities_df=activities_df)
 elif nav_selection == "Cardiovascular & Efficiency":
     render_cardiovascular_view(activities, daily_loads, user_profile, daily_df, activities_df, health_df)
 elif nav_selection == "Sleep & Recovery Intelligence":
@@ -451,6 +456,8 @@ elif nav_selection == "Fitness Insights & Analysis":
     render_insights_view(insights)
 elif nav_selection == "Race Predictor & VDOT":
     render_race_predictor_view(activities, user_profile, race_predictions)
+elif nav_selection == "Activity Log & Inspector":
+    render_activity_log_view(activities, user_profile, activities_df)
 elif nav_selection == "Walking Overview":
     render_walking_view(activities, user_profile, activities_df)
 elif nav_selection == "Cycling Overview":

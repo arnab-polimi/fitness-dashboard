@@ -21,8 +21,15 @@ from src.ui.components import (
     render_race_prediction_cards,
     render_fitness_age_card,
 )
-from src.ui.charts import plot_pmc_chart, plot_weekly_mileage_and_load
-from src.ui.icons import render_view_header, render_section_header
+from src.ui.charts import (
+    plot_pmc_chart,
+    plot_weekly_mileage_and_load,
+    plot_fenix_running_dynamics_chart,
+    plot_garmin_hr_zones_breakdown,
+    plot_hrv_status_chart,
+    plot_body_battery_chart,
+)
+from src.ui.icons import render_view_header, render_section_header, get_icon_html
 
 
 def render_overview_view(
@@ -194,7 +201,163 @@ def render_overview_view(
             delta_type="pos" if risk_report.composite_score < 50 else "neg",
         )
 
-    # 4. Fitness Age & Physiological Pattern Recognizer
+    # Hardware Device Badge (Garmin Fenix 7 Upgrade Indicator)
+    has_fenix = any(getattr(a, "device_name", "") == "Garmin Fenix 7" or (getattr(a, "garmin_training_load", None) is not None) for a in activities)
+    if has_fenix:
+        fenix_icon = get_icon_html("settings", size=18, margin_right=8)
+        st.markdown(
+            f"""
+            <div style="background: linear-gradient(135deg, rgba(193,211,127,0.12) 0%, rgba(56,189,248,0.08) 100%);
+                        border: 1px solid rgba(193,211,127,0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 20px;
+                        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,0.25);">
+                <div style="display: flex; align-items: center;">
+                    {fenix_icon}
+                    <div>
+                        <span style="font-weight: 700; color: #f0e2a3; font-size: 0.92rem;">Hardware Synchronized: Garmin Fenix 7</span>
+                        <span style="color: #94a3b8; font-size: 0.78rem; margin-left: 10px;">• Elevate v4 Optical Sensor • Overnight HRV • Native EPOC Load • Running Dynamics</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge" style="background: rgba(193,211,127,0.2); color: #c1d37f; border: 1px solid #c1d37f; font-size: 0.72rem; padding: 3px 10px;">
+                        PRIMARY TRACKER ACTIVE
+                    </span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # 4. Garmin Fenix 7 Recovery & Readiness Scorecard (HRV, Body Battery, SpO2, Respiration)
+    if health_df is not None and not health_df.empty:
+        valid_hrv = health_df[health_df["hrv_last_night"].notna()] if "hrv_last_night" in health_df.columns else pd.DataFrame()
+        valid_bb = health_df[health_df["body_battery_max"].notna()] if "body_battery_max" in health_df.columns else pd.DataFrame()
+        valid_spo2 = health_df[health_df["spo2_avg"].notna()] if "spo2_avg" in health_df.columns else pd.DataFrame()
+        valid_rr = health_df[health_df["rr_waking_avg"].notna()] if "rr_waking_avg" in health_df.columns else pd.DataFrame()
+
+        if not valid_hrv.empty or not valid_bb.empty or not valid_spo2.empty:
+            render_section_header("Garmin Fenix 7 Daily Recovery & Physiological Telemetry", icon_name="heartbeat")
+            f1, f2, f3, f4 = st.columns(4)
+
+            # HRV Card
+            with f1:
+                if not valid_hrv.empty:
+                    latest_hrv_row = valid_hrv.iloc[-1]
+                    hrv_val = latest_hrv_row["hrv_last_night"]
+                    hrv_7d = latest_hrv_row.get("hrv_weekly_avg")
+                    hrv_st = str(latest_hrv_row.get("hrv_status") or "Balanced")
+                    render_metric_card(
+                        label="Overnight HRV Status",
+                        value=f"{hrv_val:.0f} ms",
+                        subtext=f"7d Baseline: {hrv_7d:.0f} ms" if pd.notna(hrv_7d) else "Overnight rMSSD",
+                        delta=f"Status: {hrv_st}",
+                        delta_type="pos" if "balanced" in hrv_st.lower() else "neg",
+                    )
+                else:
+                    render_metric_card(label="Overnight HRV Status", value="--", subtext="Syncing telemetry", delta="Calibrating", delta_type="neutral")
+
+            # Body Battery Card
+            with f2:
+                if not valid_bb.empty:
+                    latest_bb_row = valid_bb.iloc[-1]
+                    bb_max = latest_bb_row.get("body_battery_max")
+                    bb_charged = latest_bb_row.get("body_battery_charged")
+                    render_metric_card(
+                        label="Body Battery™ Level",
+                        value=f"{bb_max:.0f} / 100" if pd.notna(bb_max) else "--",
+                        subtext=f"Overnight Charge: +{bb_charged:.0f}" if pd.notna(bb_charged) else "Recharge Level",
+                        delta="Peak Energy Restored" if (bb_max or 0) >= 85 else "Moderate Reserve",
+                        delta_type="pos" if (bb_max or 0) >= 80 else "neg",
+                    )
+                else:
+                    render_metric_card(label="Body Battery™ Level", value="--", subtext="Telemetry pending", delta="Standby", delta_type="neutral")
+
+            # Pulse Ox Card
+            with f3:
+                if not valid_spo2.empty:
+                    latest_spo2_row = valid_spo2.iloc[-1]
+                    spo2_val = latest_spo2_row.get("spo2_avg")
+                    spo2_min = latest_spo2_row.get("spo2_min")
+                    render_metric_card(
+                        label="Pulse Ox (SpO2)",
+                        value=f"{spo2_val:.1f}%" if pd.notna(spo2_val) else "--",
+                        subtext=f"Daily Min: {spo2_min:.0f}%" if pd.notna(spo2_min) else "Blood Saturation",
+                        delta="Normal Saturation" if (spo2_val or 0) >= 95 else "Borderline Low",
+                        delta_type="pos" if (spo2_val or 0) >= 95 else "neg",
+                    )
+                else:
+                    render_metric_card(label="Pulse Ox (SpO2)", value="--", subtext="Telemetry pending", delta="Standby", delta_type="neutral")
+
+            # Waking Respiration Card
+            with f4:
+                if not valid_rr.empty:
+                    latest_rr_row = valid_rr.iloc[-1]
+                    rr_val = latest_rr_row.get("rr_waking_avg")
+                    floors = latest_rr_row.get("floors_climbed")
+                    render_metric_card(
+                        label="Waking Respiration Rate",
+                        value=f"{rr_val:.0f} brpm" if pd.notna(rr_val) else "--",
+                        subtext=f"Floors Climbed: {floors:.0f}" if pd.notna(floors) else "Breaths / Minute",
+                        delta="Optimal Breath Rhythm" if (12 <= (rr_val or 14) <= 18) else "Elevated RR",
+                        delta_type="pos" if (12 <= (rr_val or 14) <= 18) else "neutral",
+                    )
+                else:
+                    render_metric_card(label="Waking Respiration", value="--", subtext="Telemetry pending", delta="Standby", delta_type="neutral")
+
+    # 5. Fenix 7 Advanced Running Dynamics & Zone Distribution
+    fenix_runs = [a for a in activities if a.sport_type in ["run", "trail_run", "treadmill_run"] and (a.vertical_oscillation_mm or a.ground_contact_time_ms)]
+    if fenix_runs:
+        render_section_header("Fenix 7 Biomechanical Running Dynamics & Heart Rate Zones", icon_name="running")
+        recent_vo = [a.vertical_oscillation_mm for a in fenix_runs if a.vertical_oscillation_mm]
+        recent_vr = [a.vertical_ratio for a in fenix_runs if a.vertical_ratio]
+        recent_gct = [a.ground_contact_time_ms for a in fenix_runs if a.ground_contact_time_ms]
+        recent_stride = [a.stride_length_m for a in fenix_runs if a.stride_length_m]
+
+        d1, d2, d3, d4 = st.columns(4)
+        with d1:
+            avg_vo = np.mean(recent_vo) if recent_vo else 0.0
+            render_metric_card(
+                label="Vertical Oscillation",
+                value=f"{avg_vo:.1f} mm" if avg_vo > 0 else "--",
+                subtext="Vertical Bounce per Stride",
+                delta="Optimal: 60-85 mm" if avg_vo <= 85 else "Excess Bounce",
+                delta_type="pos" if avg_vo <= 85 else "neg",
+            )
+        with d2:
+            avg_vr = np.mean(recent_vr) if recent_vr else 0.0
+            render_metric_card(
+                label="Vertical Ratio",
+                value=f"{avg_vr:.1f}%" if avg_vr > 0 else "--",
+                subtext="Cost of Bounce vs Stride",
+                delta="Elite Economy" if avg_vr <= 9.0 else "Good Economy",
+                delta_type="pos" if avg_vr <= 9.5 else "neutral",
+            )
+        with d3:
+            avg_gct = np.mean(recent_gct) if recent_gct else 0.0
+            render_metric_card(
+                label="Ground Contact Time",
+                value=f"{avg_gct:.0f} ms" if avg_gct > 0 else "--",
+                subtext="Stance Duration",
+                delta="Quick Turnover" if avg_gct <= 265 else "Typical Contact",
+                delta_type="pos" if avg_gct <= 265 else "neutral",
+            )
+        with d4:
+            avg_str = np.mean(recent_stride) if recent_stride else 0.0
+            render_metric_card(
+                label="Stride Length",
+                value=f"{avg_str:.2f} m" if avg_str > 0 else "--",
+                subtext="Running Stride Extension",
+                delta="Clean Extension",
+                delta_type="pos",
+            )
+
+        # Visual charts for zones and dynamics
+        zc1, zc2 = st.columns(2)
+        with zc1:
+            st.plotly_chart(plot_garmin_hr_zones_breakdown(activities_df), use_container_width=True)
+        with zc2:
+            st.plotly_chart(plot_fenix_running_dynamics_chart(activities_df), use_container_width=True)
+
+    # 6. Fitness Age & Physiological Pattern Recognizer
     fa_report = FitnessAgeEngine.calculate_fitness_age(
         user_profile=user_profile,
         daily_df=daily_df,
@@ -203,16 +366,16 @@ def render_overview_view(
     )
     render_fitness_age_card(fa_report)
 
-    # 5. Projected Race Performance Cards
+    # 7. Projected Race Performance Cards
     render_section_header("Estimated Race Performance (5K, 10K, Half & Full Marathon)", icon_name="running")
     render_race_prediction_cards(race_predictions)
 
-    # 6. Performance Management Chart (PMC)
+    # 8. Performance Management Chart (PMC)
     render_section_header("Performance Management Dynamics (PMC)", icon_name="overview")
     pmc_fig = plot_pmc_chart(daily_df)
     st.plotly_chart(pmc_fig, use_container_width=True)
 
-    # 7. Weekly Volume & Training Stress
+    # 9. Weekly Volume & Training Stress
     render_section_header("Weekly Training Load & Distance Trends", icon_name="overview")
     weekly_fig = plot_weekly_mileage_and_load(daily_df, user_profile.units)
     st.plotly_chart(weekly_fig, use_container_width=True)

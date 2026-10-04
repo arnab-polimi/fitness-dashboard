@@ -1353,4 +1353,433 @@ def plot_sleep_score_and_rhr_chart(health_df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def plot_hrv_status_chart(health_df: pd.DataFrame) -> go.Figure:
+    """
+    Overnight HRV Status & Baseline Corridor Chart for Garmin Fenix 7 telemetry.
+    Displays last night average, 7-day rolling baseline, and balanced status range.
+    """
+    if health_df.empty or "hrv_last_night" not in health_df.columns:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Overnight HRV Telemetry Available")
+        return fig
+
+    df = health_df[health_df["hrv_last_night"].notna()].copy()
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Overnight HRV Telemetry Available")
+        return fig
+
+    df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+
+    fig = go.Figure()
+
+    # Balanced corridor reference (optimal adult athlete baseline: 45 - 75 ms)
+    all_hrvs = df["hrv_last_night"].dropna()
+    mean_hrv = float(all_hrvs.mean()) if not all_hrvs.empty else 55.0
+    band_low = max(35.0, mean_hrv - 12.0)
+    band_high = min(95.0, mean_hrv + 15.0)
+
+    fig.add_hrect(
+        y0=band_low,
+        y1=band_high,
+        fillcolor="rgba(193, 211, 127, 0.12)",
+        line_width=0,
+        annotation_text="Balanced Baseline Range",
+        annotation_position="top left",
+        annotation_font_color="#c1d37f",
+        annotation_font_size=9.5,
+    )
+
+    # 1. Last Night HRV Bars
+    colors = []
+    for _, r in df.iterrows():
+        val = r["hrv_last_night"]
+        st_val = str(r.get("hrv_status", "Balanced")).lower()
+        if "unbalanced" in st_val or val < band_low:
+            colors.append("#f9d4bb")
+        elif "low" in st_val:
+            colors.append("#ef4444")
+        else:
+            colors.append("#c1d37f")
+
+    fig.add_trace(
+        go.Bar(
+            x=df["date_str"],
+            y=df["hrv_last_night"],
+            name="Overnight HRV (ms)",
+            marker=dict(color=colors, line=dict(color="rgba(255, 255, 255, 0.15)", width=1)),
+            hovertemplate="<b>%{x}</b><br>Overnight HRV: <b>%{y:.0f} ms</b><extra></extra>",
+        )
+    )
+
+    # 2. 7-Day Rolling HRV Average
+    if "hrv_weekly_avg" in df.columns and df["hrv_weekly_avg"].notna().any():
+        fig.add_trace(
+            go.Scatter(
+                x=df["date_str"],
+                y=df["hrv_weekly_avg"],
+                name="7-Day Rolling Baseline",
+                line=dict(color="#f0e2a3", width=2.8, shape="spline"),
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>7-Day Baseline: <b>%{y:.1f} ms</b><extra></extra>",
+            )
+        )
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        title="<b>Overnight HRV Status & Baseline Corridor (Garmin Fenix 7)</b>",
+        yaxis_title="HRV rMSSD (ms)",
+        height=340,
+        margin=dict(l=28, r=15, t=55, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+def plot_body_battery_chart(health_df: pd.DataFrame) -> go.Figure:
+    """
+    Body Battery Recharge & Drain Dynamics chart (Peak Max, Floor Min, Daily Charged).
+    """
+    if health_df.empty or "body_battery_max" not in health_df.columns:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Body Battery Telemetry Available")
+        return fig
+
+    df = health_df[health_df["body_battery_max"].notna()].copy()
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Body Battery Telemetry Available")
+        return fig
+
+    df["date_str"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+
+    fig = go.Figure()
+
+    # Peak Level
+    fig.add_trace(
+        go.Scatter(
+            x=df["date_str"],
+            y=df["body_battery_max"],
+            name="Peak Charged (Max)",
+            line=dict(color="#c1d37f", width=2.5, shape="spline"),
+            mode="lines+markers",
+            fill="tozeroy",
+            fillcolor="rgba(193, 211, 127, 0.08)",
+            hovertemplate="<b>%{x}</b><br>Peak Battery: <b>%{y}/100</b><extra></extra>",
+        )
+    )
+
+    # Floor Level
+    if "body_battery_min" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df["date_str"],
+                y=df["body_battery_min"],
+                name="Floor Drain (Min)",
+                line=dict(color="#e2d58b", width=2.0, dash="dash", shape="spline"),
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>Floor Battery: <b>%{y}/100</b><extra></extra>",
+            )
+        )
+
+    # Charged Recharged Energy Bars
+    if "body_battery_charged" in df.columns:
+        fig.add_trace(
+            go.Bar(
+                x=df["date_str"],
+                y=df["body_battery_charged"],
+                name="Recharged (+Energy)",
+                marker=dict(color="rgba(93, 112, 245, 0.65)", line=dict(color="#5D70F5", width=1)),
+                hovertemplate="<b>%{x}</b><br>Overnight Charge: <b>+%{y} pts</b><extra></extra>",
+            )
+        )
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        title="<b>Body Battery™ Dynamics: Overnight Recharge & Day Drain</b>",
+        yaxis_title="Body Battery (0-100)",
+        yaxis=dict(range=[0, 105]),
+        height=340,
+        margin=dict(l=28, r=15, t=55, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+def plot_fenix_running_dynamics_chart(activities_df: pd.DataFrame) -> go.Figure:
+    """
+    Advanced Biomechanical Running Dynamics from Garmin Fenix 7:
+    - Vertical Oscillation (mm)
+    - Vertical Ratio (%)
+    - Ground Contact Time (ms)
+    """
+    if activities_df.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Running Dynamics Telemetry")
+        return fig
+
+    # Filter running activities with dynamics
+    runs = activities_df[
+        (activities_df["sport_type"].isin(["run", "trail_run", "treadmill_run"])) &
+        ((activities_df["vertical_oscillation_mm"].notna()) | (activities_df["ground_contact_time_ms"].notna()))
+    ].copy()
+
+    if runs.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Fenix 7 Running Dynamics Telemetry Recorded Yet")
+        return fig
+
+    runs["date_str"] = pd.to_datetime(runs["start_time"]).dt.strftime("%b %d")
+
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.12,
+        subplot_titles=(
+            "<b>Vertical Oscillation (Bounce) & Vertical Ratio (Economy)</b>",
+            "<b>Ground Contact Time (GCT ms) & Cadence (SPM)</b>",
+        ),
+    )
+
+    # 1. Vertical Oscillation (mm)
+    if "vertical_oscillation_mm" in runs.columns and runs["vertical_oscillation_mm"].notna().any():
+        fig.add_trace(
+            go.Bar(
+                x=runs["date_str"],
+                y=runs["vertical_oscillation_mm"],
+                name="Vert. Oscillation (mm)",
+                marker=dict(color="#38bdf8", line=dict(color="rgba(255, 255, 255, 0.2)", width=1)),
+                hovertemplate="<b>%{x}</b><br>Vertical Oscillation: <b>%{y:.1f} mm</b><extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Vertical Ratio (%)
+    if "vertical_ratio" in runs.columns and runs["vertical_ratio"].notna().any():
+        fig.add_trace(
+            go.Scatter(
+                x=runs["date_str"],
+                y=runs["vertical_ratio"],
+                name="Vertical Ratio (%)",
+                line=dict(color="#f59e0b", width=2.5),
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>Vertical Ratio: <b>%{y:.1f}%</b><extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # 2. Ground Contact Time (ms)
+    if "ground_contact_time_ms" in runs.columns and runs["ground_contact_time_ms"].notna().any():
+        fig.add_trace(
+            go.Bar(
+                x=runs["date_str"],
+                y=runs["ground_contact_time_ms"],
+                name="Ground Contact (ms)",
+                marker=dict(color="#10b981", line=dict(color="rgba(255, 255, 255, 0.2)", width=1)),
+                hovertemplate="<b>%{x}</b><br>Ground Contact Time: <b>%{y:.0f} ms</b><extra></extra>",
+            ),
+            row=2,
+            col=1,
+        )
+
+    # Cadence overlay
+    if "avg_cadence" in runs.columns and runs["avg_cadence"].notna().any():
+        fig.add_trace(
+            go.Scatter(
+                x=runs["date_str"],
+                y=runs["avg_cadence"],
+                name="Cadence (SPM)",
+                line=dict(color="#c1d37f", width=2.2, dash="dot"),
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>Cadence: <b>%{y:.0f} SPM</b><extra></extra>",
+            ),
+            row=2,
+            col=1,
+        )
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        height=480,
+        margin=dict(l=28, r=15, t=55, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+def plot_garmin_hr_zones_breakdown(activities_df: pd.DataFrame) -> go.Figure:
+    """
+    Stacked breakdown of exact time spent in Garmin Heart Rate Zones (Z1 - Z5)
+    captured natively by the Garmin Fenix 7.
+    """
+    if activities_df.empty or "hrz_1_seconds" not in activities_df.columns:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Garmin Heart Rate Zone Telemetry")
+        return fig
+
+    # Filter activities with recorded zone time
+    fenix_runs = activities_df[
+        (activities_df["hrz_1_seconds"].fillna(0) +
+         activities_df["hrz_2_seconds"].fillna(0) +
+         activities_df["hrz_3_seconds"].fillna(0) +
+         activities_df["hrz_4_seconds"].fillna(0) +
+         activities_df["hrz_5_seconds"].fillna(0)) > 60
+    ].tail(10).copy()
+
+    if fenix_runs.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Fenix 7 HR Zone Telemetry Available")
+        return fig
+
+    fenix_runs["label"] = pd.to_datetime(fenix_runs["start_time"]).dt.strftime("%b %d") + " - " + fenix_runs["title"].str[:14]
+
+    z1_min = fenix_runs["hrz_1_seconds"].fillna(0) / 60.0
+    z2_min = fenix_runs["hrz_2_seconds"].fillna(0) / 60.0
+    z3_min = fenix_runs["hrz_3_seconds"].fillna(0) / 60.0
+    z4_min = fenix_runs["hrz_4_seconds"].fillna(0) / 60.0
+    z5_min = fenix_runs["hrz_5_seconds"].fillna(0) / 60.0
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        y=fenix_runs["label"],
+        x=z1_min,
+        name="Zone 1 (Warm up / Recovery)",
+        orientation="h",
+        marker=dict(color="#94a3b8"),
+        hovertemplate="%{y}<br>Z1: <b>%{x:.1f} mins</b><extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        y=fenix_runs["label"],
+        x=z2_min,
+        name="Zone 2 (Aerobic Base)",
+        orientation="h",
+        marker=dict(color="#38bdf8"),
+        hovertemplate="%{y}<br>Z2: <b>%{x:.1f} mins</b><extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        y=fenix_runs["label"],
+        x=z3_min,
+        name="Zone 3 (Tempo / Aerobic)",
+        orientation="h",
+        marker=dict(color="#10b981"),
+        hovertemplate="%{y}<br>Z3: <b>%{x:.1f} mins</b><extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        y=fenix_runs["label"],
+        x=z4_min,
+        name="Zone 4 (Lactate Threshold)",
+        orientation="h",
+        marker=dict(color="#f59e0b"),
+        hovertemplate="%{y}<br>Z4: <b>%{x:.1f} mins</b><extra></extra>",
+    ))
+    fig.add_trace(go.Bar(
+        y=fenix_runs["label"],
+        x=z5_min,
+        name="Zone 5 (Anaerobic / Max)",
+        orientation="h",
+        marker=dict(color="#ef4444"),
+        hovertemplate="%{y}<br>Z5: <b>%{x:.1f} mins</b><extra></extra>",
+    ))
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        barmode="stack",
+        title="<b>Fenix 7 Measured Time in Heart Rate Zones (Z1 - Z5)</b>",
+        xaxis_title="Time in Zone (Minutes)",
+        height=360,
+        margin=dict(l=140, r=15, t=55, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.0),
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+def plot_garmin_training_load_comparison(activities_df: pd.DataFrame) -> go.Figure:
+    """
+    Compares Garmin Native EPOC Training Load against TRIMP & TSS.
+    """
+    if activities_df.empty or "garmin_training_load" not in activities_df.columns:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Garmin Training Load Telemetry")
+        return fig
+
+    acts = activities_df[activities_df["garmin_training_load"].notna()].tail(14).copy()
+    if acts.empty:
+        fig = go.Figure()
+        fig.update_layout(**PLOT_LAYOUT_DARK, title="No Garmin EPOC Load Telemetry Recorded")
+        return fig
+
+    acts["label"] = pd.to_datetime(acts["start_time"]).dt.strftime("%b %d") + " (" + acts["sport_type"].str[:3] + ")"
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=acts["label"],
+        y=acts["garmin_training_load"],
+        name="Garmin Native EPOC Load",
+        marker=dict(color="#c1d37f", line=dict(color="rgba(255,255,255,0.2)", width=1)),
+        hovertemplate="<b>%{x}</b><br>Garmin EPOC Load: <b>%{y:.1f}</b><extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=acts["label"],
+        y=acts["tss"],
+        name="Calculated TSS",
+        line=dict(color="#f59e0b", width=2.4),
+        mode="lines+markers",
+        hovertemplate="<b>%{x}</b><br>Calculated TSS: <b>%{y:.1f}</b><extra></extra>",
+    ))
+
+    layout = dict(PLOT_LAYOUT_DARK)
+    layout.update(
+        title="<b>Garmin Fenix 7 EPOC Exercise Load vs Calculated TSS</b>",
+        yaxis_title="Training Load / Stress Units",
+        height=320,
+        margin=dict(l=28, r=15, t=55, b=35),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=9.5),
+        ),
+    )
+    fig.update_layout(layout)
+    return fig
+
+
+
 

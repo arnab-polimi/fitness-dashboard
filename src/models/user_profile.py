@@ -21,6 +21,7 @@ class UserProfile:
     units: str = "metric"  # 'metric' (km, min/km) or 'imperial' (miles, min/mile)
     target_race_distance_km: Optional[float] = 21.0975  # e.g., Half Marathon
     target_race_date: Optional[str] = None
+    auto_sync_baselines: bool = False  # Whether Garmin sync overwrites manual resting HR and weight
 
     # Heart rate zones (expressed as % of Max HR or HR Reserve / Karvonen)
     hr_zones: Dict[str, tuple] = field(default_factory=lambda: {
@@ -54,6 +55,7 @@ class UserProfile:
             "units": self.units,
             "target_race_distance_km": self.target_race_distance_km,
             "target_race_date": self.target_race_date,
+            "auto_sync_baselines": self.auto_sync_baselines,
         }
 
     @classmethod
@@ -72,4 +74,5 @@ class UserProfile:
             units=data.get("units", "metric"),
             target_race_distance_km=float(data["target_race_distance_km"]) if data.get("target_race_distance_km") is not None else None,
             target_race_date=data.get("target_race_date"),
+            auto_sync_baselines=bool(data.get("auto_sync_baselines", False)),
         )

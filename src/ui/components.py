@@ -460,14 +460,27 @@ def render_sleep_ui_card(
     s8_a = ap
 
     rhr_raw = row.get("resting_hr") if hasattr(row, "get") else getattr(row, "resting_hr", None)
-    rhr_val = f"{int(rhr_raw)}" if pd.notna(rhr_raw) else "--"
+    rhr_val = f"{int(rhr_raw)} bpm" if pd.notna(rhr_raw) else "--"
 
     score_raw = row.get("sleep_score") if hasattr(row, "get") else getattr(row, "sleep_score", None)
     score_val = f"{int(score_raw)}%" if pd.notna(score_raw) else "--"
 
-    stress_raw = row.get("stress_avg") if hasattr(row, "get") else getattr(row, "stress_avg", None)
-    stress_val = f"{int(stress_raw)}" if pd.notna(stress_raw) else "14"
-    resp_label = "Stress Avg" if pd.notna(stress_raw) else "Resp. Rate"
+    stress_raw = row.get("sleep_stress_avg") if hasattr(row, "get") else getattr(row, "sleep_stress_avg", None)
+    if not pd.notna(stress_raw):
+        stress_raw = row.get("stress_avg") if hasattr(row, "get") else getattr(row, "stress_avg", None)
+    stress_val = f"{int(stress_raw)}" if pd.notna(stress_raw) else "--"
+
+    # Fenix 7 specific health telemetry
+    hrv_raw = row.get("hrv_last_night") if hasattr(row, "get") else getattr(row, "hrv_last_night", None)
+    hrv_val = f"{int(hrv_raw)} ms" if pd.notna(hrv_raw) else "--"
+
+    spo2_raw = row.get("sleep_spo2_avg") if hasattr(row, "get") else getattr(row, "sleep_spo2_avg", None)
+    if not pd.notna(spo2_raw):
+        spo2_raw = row.get("spo2_avg") if hasattr(row, "get") else getattr(row, "spo2_avg", None)
+    spo2_val = f"{float(spo2_raw):.0f}%" if pd.notna(spo2_raw) else "--"
+
+    qual_raw = row.get("sleep_qualifier") if hasattr(row, "get") else getattr(row, "sleep_qualifier", None)
+    qual_badge = f'<span style="background: rgba(193, 211, 127, 0.18); color: #c1d37f; border: 1px solid #c1d37f; font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; font-weight: 700; margin-left: 8px;">{str(qual_raw).upper()}</span>' if qual_raw else ""
 
     card_html = f"""
     <div style="background: linear-gradient(145deg, #101524 0%, #171d30 100%);
@@ -479,7 +492,7 @@ def render_sleep_ui_card(
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 color: #ffffff;">
 
-        <!-- Top Header: Moon icon + Sleep + Date -->
+        <!-- Top Header: Moon icon + Sleep + Date + Qualifier -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="background: rgba(120, 121, 241, 0.18); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(120, 121, 241, 0.25);">
@@ -487,7 +500,8 @@ def render_sleep_ui_card(
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#7879F1"></path>
                     </svg>
                 </div>
-                <span style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">Sleep</span>
+                <span style="font-size: 1.75rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">Sleep & Recovery</span>
+                {qual_badge}
             </div>
             <div style="color: #8F9CAE; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                 <span>{date_label}</span>
@@ -581,35 +595,44 @@ def render_sleep_ui_card(
             </div>
         </div>
 
-        <!-- Telemetry Footer: Resting HR | Stress / Resp Rate | Sleep Score -->
-        <div style="border-top: 1px solid #232c42; padding-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: left;">
-            <div style="display: flex; align-items: center; gap: 14px; border-right: 1px solid #232c42; padding-right: 12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Telemetry Footer: Resting HR | Overnight HRV | SpO2 | Sleep Score -->
+        <div style="border-top: 1px solid #232c42; padding-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: left;">
+            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-right: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                 </svg>
                 <div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{rhr_val}</div>
-                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Resting HR</div>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{rhr_val}</div>
+                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Resting HR</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 14px; border-right: 1px solid #232c42; padding-left: 20px; padding-right: 12px;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 4v16m-4-12c-2 0-4 2-4 5v3c0 2.2 1.8 4 4 4h1V8zm8 0c2 0 4 2 4 5v3c0 2.2-1.8 4-4 4h-1V8z"/>
+            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-left: 12px; padding-right: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c1d37f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                 </svg>
                 <div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{stress_val}</div>
-                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">{resp_label}</div>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #c1d37f; line-height: 1.1;">{hrv_val}</div>
+                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Overnight HRV</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 14px; padding-left: 20px;">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8F9CAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div style="display: flex; align-items: center; gap: 12px; border-right: 1px solid #232c42; padding-left: 12px; padding-right: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+                <div>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #38bdf8; line-height: 1.1;">{spo2_val}</div>
+                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Pulse Ox (SpO2)</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding-left: 12px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#BA78F8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
                     <line x1="23" y1="11" x2="23" y2="13"></line>
                     <rect x="3" y="8" width="12" height="8" rx="1" fill="#7879F1"></rect>
                 </svg>
                 <div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{score_val}</div>
-                    <div style="font-size: 0.78rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Sleep Score</div>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #ffffff; line-height: 1.1;">{score_val}</div>
+                    <div style="font-size: 0.72rem; color: #8F9CAE; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;">Sleep Score</div>
                 </div>
             </div>
         </div>

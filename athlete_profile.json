@@ -1,0 +1,16 @@
+{
+  "user_id": "default_user",
+  "name": "Runner",
+  "gender": "male",
+  "age": 29,
+  "weight_kg": 61.6,
+  "resting_hr": 55,
+  "max_hr": 198,
+  "lthr": 178,
+  "threshold_pace_sec_km": 390.0,
+  "ftp_watts": 250.0,
+  "units": "metric",
+  "target_race_distance_km": 10.0,
+  "target_race_date": "2026-10-11",
+  "auto_sync_baselines": false
+}
